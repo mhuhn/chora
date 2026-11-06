@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.4.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.5.0";</script>
 </head>
 <body>
 <style>
@@ -411,6 +411,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .inline-form .input { flex: 1 1 170px; width: auto; }
 .inline-form .btn { flex: none; }
 
+.task-desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 65ch; color: var(--ink); }
+.dots i.req { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--orange); }
+.detail .textarea { min-height: 96px; }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -498,8 +501,14 @@ const P = n => `${n}p`;   // virtuelle Währung
 
 /* ---------- Beispieldaten ---------- */
 function seed() {
+  const DESC = {
+    t01: "Vor jeder Probe 10 Minuten Atem- und Stimmübungen mit dem ganzen Chor.",
+    t08: "Podeste, Stühle und Notenpulte vor dem Konzert aufbauen und danach wieder abbauen.",
+    t18: "Einen Kuchen oder etwas Herzhaftes für die Probenpause mitbringen."
+  };
   const t = (id, title, cat, iv, pts, total, taken, from, to) =>
-    ({ id, title, category: cat, interval: iv, points: pts, total, assigned: taken, validFrom: from, validTo: to });
+    ({ id, title, description: DESC[id] || "", category: cat, interval: iv, points: pts,
+       min: Math.max(1, Math.ceil(total / 2)), total, assigned: taken, validFrom: from, validTo: to });
   const tasks = [
     t("t01", "Einsingen anleiten", "Proben", "M", 6, 4, 2, "2026-01-01", "2027-12-31"),
     t("t02", "Stimmprobe leiten", "Proben", "M", 12, 6, 3, "2026-01-01", "2027-12-31"),
@@ -547,7 +556,7 @@ function seed() {
     { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported" },
     { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported" }
   ];
-  return { v: 4, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  return { v: 5, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
@@ -577,10 +586,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v4";
+const KEY = "chora.v5";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 4) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 5) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -886,8 +895,9 @@ async function reload() {
     Remote.rest("categories?select=name&order=name", "GET")
   ]);
   CACHE.categories = (cats || []).map(c => c.name).sort((a, b) => a.localeCompare(b, "de"));
-  DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, category: t.category, interval: t.period, points: t.points,
-    total: t.total, assigned: t.assigned, validFrom: t.valid_from, validTo: t.valid_to }));
+  DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
+    interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max, assigned: t.assigned,
+    validFrom: t.valid_from, validTo: t.valid_to }));
   CACHE.reports = {}; CACHE.lastCheck = {};
   (tasks || []).forEach(t => {
     if (t.report_status) CACHE.reports[t.id] = { status: t.report_status, date: isoLocal(t.reported_at), comment: t.report_comment || "",
@@ -905,7 +915,8 @@ async function reload() {
     checks: (checks || []).map(c => ({ taskId: c.task_id, title: c.task_title, date: c.checked_on, points: c.points, checker: c.checker_chor_id || "" }))
   };
 }
-const taskRow2db = d => ({ title: d.title, category: d.category, period: d.interval, points: d.points, total: d.total,
+const taskRow2db = d => ({ title: d.title, description: d.description || null, category: d.category, period: d.interval,
+  points: d.points, seats_min: d.min, seats_max: d.total,
   valid_from: d.validFrom, valid_to: d.validTo || null });
 async function afterAuth(r, email, password) {
   if (r.status === "verification_required") {
@@ -986,6 +997,7 @@ const fmtDate = iso => { if (!iso) return ""; const [y, m, d] = String(iso).spli
 const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 const initials = p => ((p.firstName || "?")[0] + (p.lastName || "")[0]).toUpperCase();
 const scopeText = t => `${P(t.points)} pro ${INTERVALS[t.interval]}`;
+const seatsText = t => (t.min && t.min !== t.total ? `${t.min}–${t.total}` : `${t.total}`);
 const wide = () => matchMedia("(min-width: 768px)").matches;
 const $ = s => document.querySelector(s);
 
@@ -1197,7 +1209,7 @@ function taskRow(t) {
   return `<li><button class="row gutter" data-act="task" data-id="${t.id}" ${S.taskId === t.id && wide() ? 'aria-current="true"' : ""}>
     <span class="row-main"><span class="row-title">${esc(t.title)}${mine ? mineTag(t.id) : ""}</span>
     <span class="row-sub num">${scopeText(t)}</span></span>
-    <span class="row-meta"><span class="seats">${t.assigned} von ${t.total}</span><span class="seatbar${full ? " full" : ""}"><i style="width:${Math.round(t.assigned / t.total * 100)}%"></i></span></span>
+    <span class="row-meta"><span class="seats">${t.assigned} von ${seatsText(t)}</span><span class="seatbar${full ? " full" : ""}"><i style="width:${Math.round(t.assigned / t.total * 100)}%"></i></span></span>
     ${I.chev}</button></li>`;
 }
 function mineTag(id) {
@@ -1278,19 +1290,23 @@ function taskDetail(t) {
   else if (notYet) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = `Du kannst die Aufgabe ab ${fmtDate(t.validFrom)} übernehmen.`; }
   else if (full) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = "Alle Plätze sind vergeben."; }
   else { btn = `<button class="btn btn-primary btn-block" data-act="claim" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Aufgabe übernehmen</button>`; note = free === 1 ? "Noch 1 Platz frei." : `Noch ${free} Plätze frei.`; }
-  const dots = t.total <= 50 ? `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${i < t.assigned ? (mine && i === t.assigned - 1 ? "me" : "on") : ""}"></i>`).join("")}</div>` : "";
+  const dots = t.total <= 50 ? `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${[i < t.assigned ? (mine && i === t.assigned - 1 ? "me" : "on") : "", i < (t.min || 0) ? "req" : ""].join(" ").trim()}"></i>`).join("")}</div>` : "";
+  const below = (t.min || 0) - t.assigned;
+  const seatCap = `${t.assigned} von ${t.total} Plätzen vergeben${t.min && t.min !== t.total ? ` · mindestens ${t.min}` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen noch ${below} Personen`}` : ""}`;
   return `<article class="detail gutter">
     <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(t.category)}</div>
       ${can("aufgabenverwalter") ? `<button class="btn btn-secondary btn-sm" data-act="edit-task" data-id="${t.id}">${I.edit}Bearbeiten</button>` : ""}</div>
-      <h2>${esc(t.title)}</h2></div>
+      <h2>${esc(t.title)}</h2>
+      ${t.description ? `<p class="task-desc">${esc(t.description)}</p>` : ""}</div>
     <div class="scope"><b>${P(t.points)}</b><span>pro ${INTERVALS[t.interval]}</span></div>
-    <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${t.assigned} von ${t.total} Plätzen vergeben</div></div>
+    <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${seatCap}</div></div>
     <dl class="props">
       <div><dt>Aufgabe</dt><dd>${esc(t.title)}</dd></div>
       <div><dt>Kategorie</dt><dd>${esc(t.category)}</dd></div>
       <div><dt>Intervall</dt><dd>${INTERVALS[t.interval]}</dd></div>
       <div><dt>Punkte</dt><dd>${P(t.points)}</dd></div>
-      <div><dt>Gesamt</dt><dd>${t.total}</dd></div>
+      <div><dt>Plätze min.</dt><dd>${t.min || 1}</dd></div>
+      <div><dt>Plätze max.</dt><dd>${t.total}</dd></div>
       <div><dt>Vergeben</dt><dd>${t.assigned}</dd></div>
       <div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>
       <div><dt>Gültig bis</dt><dd>${t.validTo ? fmtDate(t.validTo) : "dauerhaft"}</dd></div>
@@ -1301,7 +1317,7 @@ function taskDetail(t) {
 
 function taskEdit(t) {
   const isNew = !t;
-  const d = S.taskDraft || t || { title: "", category: "", interval: "Q", points: 5, total: 1, validFrom: todayISO(), validTo: "" };
+  const d = S.taskDraft || t || { title: "", description: "", category: "", interval: "Q", points: 5, min: 1, total: 1, validFrom: todayISO(), validTo: "" };
   const cats = Api.categories();
   const num = (k, label, min, max) => `<div class="field"><label for="te-${k}">${label}</label>
     <input class="input num" id="te-${k}" name="${k}" type="number" inputmode="numeric" min="${min}" ${max ? `max="${max}"` : ""} step="1" value="${esc(d[k])}"${inv(k)}>${fieldErr(k)}</div>`;
@@ -1310,6 +1326,8 @@ function taskEdit(t) {
     ${errBox()}
     <div class="field"><label for="te-title">Aufgabe</label>
       <input class="input" id="te-title" name="title" value="${esc(d.title)}"${inv("title")}>${fieldErr("title")}</div>
+    <div class="field"><label for="te-description">Beschreibung</label>
+      <textarea class="textarea" id="te-description" name="description" maxlength="2000" placeholder="Was genau ist zu tun?">${esc(d.description || "")}</textarea></div>
     <div class="two">
       <div class="field"><label for="te-category">Kategorie</label>
         <select class="select" id="te-category" name="category"${inv("category")}>
@@ -1319,8 +1337,8 @@ function taskEdit(t) {
       <div class="field"><label for="te-interval">Intervall</label>
         <select class="select" id="te-interval" name="interval">${Object.entries(INTERVALS).map(([k, l]) => `<option value="${k}" ${d.interval === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
     </div>
-    <div class="two">${num("points", "Punkte (p)", 1)}${num("total", "Plätze gesamt", 1, 50)}</div>
-    ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Vergeben: ${t.assigned} von ${t.total}. Die Zahl ergibt sich aus den Übernahmen im laufenden Jahr.</p>`}
+    <div class="three">${num("points", "Punkte (p)", 1)}${num("min", "Plätze min.", 1, 50)}${num("total", "Plätze max.", 1, 50)}</div>
+    ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Vergeben: ${t.assigned}. Die Zahl ergibt sich aus den Übernahmen im laufenden Jahr.</p>`}
     <div class="two">
       <div class="field"><label for="te-validFrom">Gültig ab</label>
         <input class="input" id="te-validFrom" name="validFrom" type="date" value="${esc(d.validFrom)}"${inv("validFrom")}>${fieldErr("validFrom")}</div>
@@ -1330,21 +1348,25 @@ function taskEdit(t) {
     </div>
     <div class="edit-actions">
       <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : (isNew ? I.plus : I.save)}${isNew ? "Aufgabe anlegen" : "Speichern"}</button>
-      <button class="btn btn-secondary" type="button" data-act="cancel-edit">Abbrechen</button>
+      ${isNew ? `<button class="btn btn-secondary" type="submit" data-next="1" ${S.busy ? "disabled" : ""}>${I.plus}Anlegen und weitere</button>` : ""}
+      <button class="btn btn-ghost" type="button" data-act="cancel-edit">Abbrechen</button>
     </div>
   </form>`;
 }
 function readTask(f) {
   const g = k => String(new FormData(f).get(k) || "").trim();
   const n = k => /^\d+$/.test(g(k)) ? parseInt(g(k), 10) : NaN;
-  return { title: g("title"), category: g("category"), interval: g("interval"), points: n("points"), total: n("total"), validFrom: g("validFrom"), validTo: g("validTo") };
+  return { title: g("title"), description: g("description"), category: g("category"), interval: g("interval"), points: n("points"),
+    min: n("min"), total: n("total"), validFrom: g("validFrom"), validTo: g("validTo") };
 }
 function validateTask(t, existing) {
   const e = {};
   if (!t.title) e.title = "Bitte gib einen Titel ein.";
   if (!t.category) e.category = "Bitte wähle eine Kategorie.";
   if (!(t.points >= 1)) e.points = "Ganze Zahl ab 1.";
+  if (!(t.min >= 1 && t.min <= 50)) e.min = "Ganze Zahl von 1 bis 50.";
   if (!(t.total >= 1 && t.total <= 50)) e.total = "Ganze Zahl von 1 bis 50.";
+  else if (t.min >= 1 && t.total < t.min) e.total = "Mindestens so viele wie das Minimum.";
   else if (existing && t.total < existing.assigned) e.total = `Es sind schon ${existing.assigned} Plätze vergeben.`;
   if (!t.validFrom) e.validFrom = "Bitte wähle ein Datum.";
   if (t.validTo && t.validFrom && t.validTo < t.validFrom) e.validTo = "Muss am oder nach „Gültig ab“ liegen.";
@@ -1765,10 +1787,18 @@ document.addEventListener("submit", async e => {
   }
   if (f.id === "f-task") {
     const id = f.dataset.id, t = readTask(f), errors = validateTask(t, id ? DB.tasks.find(x => x.id === id) : null);
+    const next = !id && e.submitter && e.submitter.dataset.next === "1";
     if (Object.keys(errors).length) { go({ errors, error: "", taskDraft: t }); return; }
     go({ busy: true, errors: {}, error: "", taskDraft: t });
     try {
       if (id) { await Api.updateTask(id, t); go({ busy: false, editTask: null, taskDraft: null }); toast("Aufgabe gespeichert."); }
+      else if (next) {
+        await Api.createTask(t);
+        go({ busy: false, editTask: "new", taskId: null, taskDraft: { title: "", description: "", category: t.category, interval: t.interval,
+          points: 5, min: 1, total: 1, validFrom: t.validFrom, validTo: t.validTo } });
+        scrollDetailTop(); const i = $("#te-title"); if (i) i.focus();
+        toast(`„${t.title}“ angelegt. Jetzt die nächste.`);
+      }
       else { const newId = await Api.createTask(t); go({ busy: false, editTask: null, taskDraft: null, taskId: newId, q: "", onlyMine: false }); toast("Aufgabe angelegt."); }
     }
     catch (err) { go({ busy: false, error: err.message }); }
