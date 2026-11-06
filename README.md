@@ -1,6 +1,6 @@
 # Chora – PWA
 
-Version 1.3.0 · verbunden mit Supabase (Daten) und WorkOS (Anmeldung)
+Version 1.4.0 · verbunden mit Supabase (Daten) und WorkOS (Anmeldung)
 
 ## Installieren
 
