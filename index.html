@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.8.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.9.1";</script>
 </head>
 <body>
 <style>
@@ -428,6 +428,10 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .lv-tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; white-space: nowrap; }
 .missing { gap: 4px; }
 .role-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.dot-rows { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: center; }
+.dot-row { display: contents; }
+.dot-row.single .dots { grid-column: 1 / -1; }
+.dot-label { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -528,6 +532,9 @@ function unitLabel(i, iv) {
   if (iv === "J3") return `${y}–${y + 2}`;
   return `${y}`;
 }
+// Kurz ohne Jahr, z. B. "Feb – Apr" oder "Q1 – Q2"
+function shortUnit(i, iv) { return iv === "Q" ? `Q${(i % 12) / 3 + 1}` : MONTHS[i % 12]; }
+function shortRange(a, b, iv) { return a === b ? shortUnit(a, iv) : `${shortUnit(a, iv)} – ${shortUnit(b, iv)}`; }
 function rangeLabel(a, b, iv) { return b == null || a === b ? unitLabel(a, iv) : `${unitLabel(a, iv)} – ${unitLabel(b, iv)}`; }
 function unitCount(a, b, iv) { return iv === "J3" ? 1 : (b - a) / LEN[iv] + 1; }
 function unitWord(n, iv) {
@@ -569,6 +576,30 @@ function unitsInSeason(c, iv, season) {
   for (let i = c.start; i <= cap; i += LEN[iv]) if (Math.floor(i / 12) === season) n++;
   return n;
 }
+// Belegung: wie viele Übernahmen decken einen Monat / ein Quartal / ein Jahr ab?
+function covers(p, iv, u) { const e = effEnd(p, iv); return u >= p.start && (e == null || u < e + LEN[iv]); }
+function countAt(t, u) { return (t.periods || []).filter(p => covers(p, t.interval, u)).length; }
+// Ab September ist das Folgejahr wählbar
+function yearChoices() { const d = new Date(), y = d.getFullYear(); return d.getMonth() >= 8 ? [y, y + 1] : [y]; }
+function selYear() { const ys = yearChoices(); return ys.includes(S.year) ? S.year : ys[0]; }
+// Zukünftige Einheiten des Jahres (im laufenden Jahr ab der aktuellen Einheit)
+function yearUnits(iv, year) {
+  if (iv === "J" || iv === "J3") return [year * 12];
+  const cur = unitOf(nowIdx(), iv), out = [];
+  for (let i = year * 12; i < year * 12 + 12; i += LEN[iv]) if (i >= cur) out.push(i);
+  return out;
+}
+function occupancy(t, year) { return yearUnits(t.interval, year).map(u => ({ u, n: countAt(t, u) })); }
+function minAssigned(t, year) { const o = occupancy(t, year); return o.length ? Math.min(...o.map(x => x.n)) : 0; }
+function peakAssigned(t) { return Math.max(0, ...yearChoices().flatMap(y => occupancy(t, y).map(x => x.n))); }
+function segments(t, year) {
+  const out = [];
+  occupancy(t, year).forEach(({ u, n }) => {
+    const last = out[out.length - 1];
+    if (last && last.n === n) last.to = u; else out.push({ from: u, to: u, n });
+  });
+  return out;
+}
 const allReported = (c, iv) => { const e = effEnd(c, iv); return e != null && reportStart(c, iv) > e; };
 const askKeep = (c, iv, e) => { const eff = effEnd(c, iv); return iv !== "J3" && (eff == null || e < eff); };
 function reportStart(c, iv) { return c.doneUntil != null ? c.doneUntil + LEN[iv] : c.start; }
@@ -588,9 +619,14 @@ function seed() {
     t08: "Podeste, Stühle und Notenpulte vor dem Konzert aufbauen und danach wieder abbauen.",
     t18: "Einen Kuchen oder etwas Herzhaftes für die Probenpause mitbringen."
   };
+  const PERIODS = {   // Beispiel mit wechselnder Belegung
+    t02: [{ start: mIdx("2026-01"), end: null, by: "seed" }, { start: mIdx("2026-01"), end: null, by: "seed" },
+          { start: mIdx("2026-01"), end: mIdx("2026-11"), by: "seed" }, { start: mIdx("2027-02"), end: mIdx("2027-04"), by: "seed" }]
+  };
   const t = (id, title, cat, iv, pts, total, taken, from, to) =>
     ({ id, title, description: DESC[id] || "", category: cat, interval: iv, points: pts,
-       min: Math.max(1, Math.ceil(total / 2)), total, assigned: taken, validFrom: from, validTo: to });
+       min: Math.max(1, Math.ceil(total / 2)), total, validFrom: from, validTo: to,
+       periods: PERIODS[id] || Array.from({ length: taken }, () => ({ start: mIdx("2026-01"), end: null, by: "seed" })) });
   const tasks = [
     t("t01", "Einsingen anleiten", "Proben", "M", 6, 4, 2, "2026-01-01", "2027-12-31"),
     t("t02", "Stimmprobe leiten", "Proben", "M", 12, 6, 3, "2026-01-01", "2027-12-31"),
@@ -638,7 +674,7 @@ function seed() {
     { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5 },
     { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 15 }
   ];
-  return { v: 6, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  return { v: 7, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
@@ -678,10 +714,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v6";
+const KEY = "chora.v7";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 6) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 7) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -753,7 +789,7 @@ const Api = {
     const d = demoUsers()[kind];
     if (!DB.users[d.email]) {
       DB.users[d.email] = d;
-      d.claims.forEach(id => { const t = DB.tasks.find(x => x.id === id); if (t && t.assigned < t.total) t.assigned++; });
+      Object.entries(d.claimInfo || {}).forEach(([id, c]) => { const t = DB.tasks.find(x => x.id === id); if (t) t.periods.push({ start: c.start, end: c.end, by: "u:" + d.email }); });
       (d.reports || []).forEach((r, i) => DB.reports.push({ id: "r-" + kind + i, by: "u:" + d.email, ...r }));
       delete d.reports;
     }
@@ -812,7 +848,7 @@ const Api = {
   async createTask(data) {
     await wait();
     if (!can("aufgabenverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Aufgabenverwalter.");
-    const t = { id: "t" + Date.now().toString(36), assigned: 0, ...data };
+    const t = { id: "t" + Date.now().toString(36), periods: [], ...data };
     DB.tasks.push(t); saveDB();
     return t.id;
   },
@@ -823,17 +859,22 @@ const Api = {
     if (Api.myClaim(id)) throw new ApiError("dup", "Du hast diese Aufgabe schon übernommen.");
     if (!startOptions(t).includes(start)) throw new ApiError("start", "Dieser Start ist nicht mehr oder noch nicht wählbar.");
     if (end != null && !endOptions(t, start).includes(end)) throw new ApiError("end", "Dieses Ende ist nicht wählbar.");
-    if (t.assigned >= t.total) throw new ApiError("full", "Für diesen Zeitraum sind alle Plätze vergeben.");
+    const probe = { start, end: t.interval === "J3" ? null : end }, pe = effEnd(probe, t.interval);
+    for (let u = start; u <= (pe == null ? start + 24 : pe); u += LEN[t.interval]) {
+      if (countAt(t, u) >= t.total) throw new ApiError("full", "Für diesen Zeitraum sind alle Plätze vergeben.");
+    }
     u.claimInfo = u.claimInfo || {};
     u.claimInfo[id] = { start, end: t.interval === "J3" ? null : end, doneUntil: null };
-    t.assigned++; if (!u.claims.includes(id)) u.claims.push(id); saveDB();
+    t.periods.push({ start, end: t.interval === "J3" ? null : end, by: myKey() });
+    if (!u.claims.includes(id)) u.claims.push(id); saveDB();
   },
   async unclaim(id) {
     await wait(120);
     const u = me(), t = DB.tasks.find(x => x.id === id);
     DB.reports = DB.reports.filter(r => !(r.by === myKey() && r.taskId === id));
     if (u.claimInfo) delete u.claimInfo[id];
-    u.claims = u.claims.filter(x => x !== id); t.assigned = Math.max(0, t.assigned - 1); saveDB();
+    t.periods = t.periods.filter(p => p.by !== myKey());
+    u.claims = u.claims.filter(x => x !== id); saveDB();
   },
   myClaim(id) {
     const u = me(), t = DB.tasks.find(x => x.id === id);
@@ -880,7 +921,8 @@ const Api = {
       if (c) {
         c.doneUntil = r.periodEnd;
         if (!r.keep) c.end = r.periodEnd;
-        if (!claimActive(c, t.interval)) { delete owner.claimInfo[t.id]; owner.claims = owner.claims.filter(x => x !== t.id); t.assigned = Math.max(0, t.assigned - 1); }
+        const pp = t.periods.find(x => x.by === r.by); if (pp) pp.end = c.end;
+        if (!claimActive(c, t.interval)) { delete owner.claimInfo[t.id]; owner.claims = owner.claims.filter(x => x !== t.id); t.periods = t.periods.filter(x => x.by !== r.by); }
       }
     }
     else { const m = DB.members.find(x => x.id === r.by); if (m) m.collected += pts; }
@@ -1016,7 +1058,8 @@ async function reload() {
   ]);
   CACHE.categories = (cats || []).map(c => c.name).sort((a, b) => a.localeCompare(b, "de"));
   DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
-    interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max, assigned: t.assigned,
+    interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max,
+    periods: (t.occupancy || []).map(([a, b]) => ({ start: mIdx(a), end: b ? mIdx(b) : null })),
     validFrom: t.valid_from, validTo: t.valid_to }));
   CACHE.reports = {}; CACHE.lastCheck = {}; CACHE.claims = {};
   const ix = d => (d ? mIdx(d) : null);
@@ -1154,7 +1197,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1331,11 +1374,11 @@ function filteredTasks() {
   return DB.tasks.filter(t => (!S.onlyMine || u.claims.includes(t.id)) && (!q || t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)));
 }
 function taskRow(t) {
-  const u = me(), mine = u.claims.includes(t.id), full = t.assigned >= t.total;
+  const u = me(), mine = u.claims.includes(t.id), n = minAssigned(t, selYear()), full = n >= t.total;
   return `<li><button class="row gutter" data-act="task" data-id="${t.id}" ${S.taskId === t.id && wide() ? 'aria-current="true"' : ""}>
     <span class="row-main"><span class="row-title">${esc(t.title)}${mine ? mineTag(t.id) : ""}</span>
     <span class="row-sub num">${scopeText(t)}</span></span>
-    <span class="row-meta"><span class="seats">${t.assigned} von ${seatsText(t)}</span><span class="seatbar${full ? " full" : ""}"><i style="width:${Math.round(t.assigned / t.total * 100)}%"></i></span></span>
+    <span class="row-meta"><span class="seats">${n} von ${seatsText(t)}</span><span class="seatbar${full ? " full" : ""}"><i style="width:${Math.round(n / t.total * 100)}%"></i></span></span>
     ${I.chev}</button></li>`;
 }
 function mineTag(id) {
@@ -1376,7 +1419,8 @@ function tasksView() {
     <div class="list-pane" id="list-pane">
       <div class="toolbar gutter" id="tb">
         <div class="search">${I.search}<label class="sr" for="q">Aufgaben durchsuchen</label><input class="input" id="q" type="search" placeholder="Aufgabe suchen" value="${esc(S.q)}" autocomplete="off"></div>
-        <div class="chips" role="group" aria-label="Sortierung">
+        <div class="chips" role="group" aria-label="Jahr und Sortierung">
+          ${yearChoices().length > 1 ? `${yearChoices().map(y => `<button class="chip" data-act="year" data-y="${y}" aria-pressed="${selYear() === y}">${y}</button>`).join("")}<span class="chip-sep" aria-hidden="true"></span>` : ""}
           <button class="chip" data-act="group" data-g="cat" aria-pressed="${S.group === "cat"}">Nach Kategorie</button>
           <button class="chip" data-act="group" data-g="az" aria-pressed="${S.group === "az"}">A–Z</button>
           <span class="chip-sep" aria-hidden="true"></span>
@@ -1397,7 +1441,8 @@ function firstVisibleTaskId() {
 }
 function taskDetail(t) {
   if (!t) return `<div class="empty">${I.tasks}<div>Diese Aufgabe gibt es nicht mehr.</div></div>`;
-  const u = me(), mine = u.claims.includes(t.id), full = t.assigned >= t.total, free = t.total - t.assigned;
+  const year = selYear(), segs = segments(t, year), n = segs.length ? Math.min(...segs.map(x => x.n)) : 0;
+  const u = me(), mine = u.claims.includes(t.id), full = n >= t.total, free = t.total - n;
   const today = todayISO(), notYet = !!t.validFrom && today < t.validFrom, expired = !!t.validTo && today > t.validTo;
   let btn, note = "";
   if (mine) {
@@ -1430,9 +1475,18 @@ function taskDetail(t) {
     btn = `<button class="btn btn-primary btn-block" data-act="claim" data-id="${t.id}">${I.plus}Aufgabe übernehmen</button>`;
     note = full ? "Im Moment sind alle Plätze vergeben. Für einen späteren Zeitraum kannst du es trotzdem versuchen." : free === 1 ? "Noch 1 Platz frei." : `Noch ${free} Plätze frei.`;
   }
-  const dots = t.total <= 50 ? `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${[i < t.assigned ? (mine && i === t.assigned - 1 ? "me" : "on") : "", i < (t.min || 0) ? "req" : ""].join(" ").trim()}"></i>`).join("")}</div>` : "";
-  const below = (t.min || 0) - t.assigned;
-  const seatCap = `${t.assigned} von ${t.total} Plätzen vergeben${t.min && t.min !== t.total ? ` · mindestens ${t.min}` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen noch ${below} Personen`}` : ""}`;
+  const myC = mine ? Api.myClaim(t.id) : null;
+  const dotLine = sg => {
+    const meHere = myC && covers(myC, t.interval, sg.from);
+    return `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${[i < sg.n ? (meHere && i === sg.n - 1 ? "me" : "on") : "", i < (t.min || 0) ? "req" : ""].join(" ").trim()}"></i>`).join("")}</div>`;
+  };
+  const multi = segs.length > 1;
+  const dots = t.total <= 50 && segs.length ? `<div class="dot-rows">${segs.map(sg => `<div class="dot-row${multi ? "" : " single"}">
+      ${multi ? `<span class="dot-label">${shortRange(sg.from, sg.to, t.interval)}</span>` : ""}${dotLine(sg)}</div>`).join("")}</div>` : "";
+  const below = (t.min || 0) - n;
+  const yearTxt = yearChoices().length > 1 ? ` (${year})` : "";
+  const seatCap = (multi ? `Plätze vergeben je Zeitraum${yearTxt}, höchstens ${t.total}` : `${n} von ${t.total} Plätzen vergeben${yearTxt}`)
+    + `${t.min && t.min !== t.total ? ` · mindestens ${t.min}` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen bis zu ${below} Personen`}` : ""}`;
   return `<article class="detail gutter">
     <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(t.category)}</div>
       ${can("aufgabenverwalter") ? `<button class="btn btn-secondary btn-sm" data-act="edit-task" data-id="${t.id}">${I.edit}Bearbeiten</button>` : ""}</div>
@@ -1440,11 +1494,10 @@ function taskDetail(t) {
       ${t.description ? `<p class="task-desc">${esc(t.description)}</p>` : ""}</div>
     <div class="scope"><b>${P(t.points)}</b><span>pro ${INTERVALS[t.interval]}</span></div>
     <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${seatCap}</div></div>
-    <dl class="props">
-      <div><dt>Kategorie</dt><dd>${esc(t.category)}</dd></div>
+    ${t.validFrom || t.validTo ? `<dl class="props">
       ${t.validFrom ? `<div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>` : ""}
       ${t.validTo ? `<div><dt>Gültig bis</dt><dd>${fmtDate(t.validTo)}</dd></div>` : ""}
-    </dl>
+    </dl>` : ""}
     <div class="cta">${btn}<p class="cta-note">${note}</p></div>
   </article>`;
 }
@@ -1522,7 +1575,7 @@ function taskEdit(t) {
         <select class="select" id="te-interval" name="interval">${Object.entries(INTERVALS).map(([k, l]) => `<option value="${k}" ${d.interval === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
     </div>
     <div class="three">${num("points", "Punkte (p)", 1)}${num("min", "Plätze min.", 1, 50)}${num("total", "Plätze max.", 1, 50)}</div>
-    ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Vergeben: ${t.assigned}. Die Zahl ergibt sich aus den Übernahmen im laufenden Jahr.</p>`}
+    ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Derzeit höchstens ${peakAssigned(t)} Plätze gleichzeitig vergeben.</p>`}
     <div class="two">
       <div class="field"><label for="te-validFrom">Gültig ab</label>
         <input class="input" id="te-validFrom" name="validFrom" type="date" value="${esc(d.validFrom || "")}"${inv("validFrom")}>
@@ -1552,7 +1605,7 @@ function validateTask(t, existing) {
   if (!(t.min >= 1 && t.min <= 50)) e.min = "Ganze Zahl von 1 bis 50.";
   if (!(t.total >= 1 && t.total <= 50)) e.total = "Ganze Zahl von 1 bis 50.";
   else if (t.min >= 1 && t.total < t.min) e.total = "Mindestens so viele wie das Minimum.";
-  else if (existing && t.total < existing.assigned) e.total = `Es sind schon ${existing.assigned} Plätze vergeben.`;
+  else if (existing && t.total < peakAssigned(existing)) e.total = `Es sind schon ${peakAssigned(existing)} Plätze gleichzeitig vergeben.`;
   if (t.validTo && t.validFrom && t.validTo < t.validFrom) e.validTo = "Muss am oder nach „Gültig ab“ liegen.";
   return e;
 }
@@ -1871,6 +1924,7 @@ document.addEventListener("click", async e => {
     return;
   }
   if (a === "group") { S.group = el.dataset.g; if (wide()) S.taskId = null; return render(); }
+  if (a === "year") { S.year = Number(el.dataset.y); return render(); }
   if (a === "only-mine") { S.onlyMine = !S.onlyMine; if (wide()) S.taskId = null; return render(); }
   if (a === "done") { S.reporting = el.dataset.id; S.claiming = null; render(); return; }
   if (a === "undo-done") {
