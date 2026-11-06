@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.5.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.7.0";</script>
 </head>
 <body>
 <style>
@@ -414,6 +414,17 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .task-desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 65ch; color: var(--ink); }
 .dots i.req { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--orange); }
 .detail .textarea { min-height: 96px; }
+.report-form { display: grid; gap: 12px; padding: 14px; border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: left; }
+.report-form .two { gap: 12px; }
+.period-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.period-row .select { flex: 1 1 150px; width: auto; }
+.period-fixed { font-weight: 650; }
+.report-sum { font-size: 15px; font-variant-numeric: tabular-nums; }
+.report-sum b { font-family: var(--display); font-size: 20px; color: var(--green-ink); }
+.radio { display: flex; gap: 10px; align-items: center; min-height: 40px; font-size: 15px; }
+.radio input { width: 20px; height: 20px; accent-color: var(--orange); }
+fieldset.field { border: 0; padding: 0; margin: 0; }
+fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -499,6 +510,74 @@ function levelOf(sum) {
 }
 const P = n => `${n}p`;   // virtuelle Währung
 
+/* ---------- Zeiträume: Monate als Index (Jahr*12 + Monat-1) ---------- */
+const LEN = { M: 1, Q: 3, J: 12, J3: 36 };
+const STEP = { M: 1, Q: 3, J: 12, J3: 12 };       // Raster der wählbaren Starts
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const mIdx = iso => { const [y, m] = String(iso).split("-").map(Number); return y * 12 + m - 1; };
+const mIso = i => `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}-01`;
+const nowIdx = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
+function unitOf(i, iv) { if (iv === "M") return i; if (iv === "Q") return i - (i % 3); return i - (i % 12); }
+function unitLabel(i, iv) {
+  const y = Math.floor(i / 12), m = i % 12;
+  if (iv === "M") return `${MONTHS[m]} ${y}`;
+  if (iv === "Q") return `Q${m / 3 + 1} ${y}`;
+  if (iv === "J3") return `${y}–${y + 2}`;
+  return `${y}`;
+}
+function rangeLabel(a, b, iv) { return b == null || a === b ? unitLabel(a, iv) : `${unitLabel(a, iv)} – ${unitLabel(b, iv)}`; }
+function unitCount(a, b, iv) { return iv === "J3" ? 1 : (b - a) / LEN[iv] + 1; }
+function unitWord(n, iv) {
+  return { M: ["Monat", "Monate"], Q: ["Quartal", "Quartale"], J: ["Jahr", "Jahre"], J3: ["3-Jahres-Zeitraum", "3-Jahres-Zeiträume"] }[iv][n === 1 ? 0 : 1];
+}
+// Wählbare Starts: Monat bis zum 6. noch aktuell, Quartal bis zum 15. des ersten Monats,
+// Jahr/3 Jahre: aktuelles Jahr bis Dezember, ab September auch das Folgejahr
+function startOptions(t) {
+  const d = new Date(), now = nowIdx(), iv = t.interval;
+  let first, last;
+  if (iv === "M") { first = d.getDate() <= 6 ? now : now + 1; last = first + 11; }
+  else if (iv === "Q") { const q = unitOf(now, "Q"); first = (now === q && d.getDate() <= 15) ? q : q + 3; last = first + 21; }
+  else { first = now - (now % 12); last = d.getMonth() >= 8 ? first + 12 : first; }
+  const lo = unitOf(mIdx(t.validFrom), iv === "J3" ? "J" : iv), hi = t.validTo ? mIdx(t.validTo) : Infinity;
+  const out = [];
+  for (let i = first; i <= last; i += STEP[iv]) if (i >= lo && i <= hi) out.push(i);
+  return out;
+}
+function endOptions(t, s) {
+  const iv = t.interval;
+  if (iv === "J3") return [];
+  const y = Math.floor(s / 12);
+  let max = iv === "M" ? (y + 1) * 12 + 11 : iv === "Q" ? (y + 1) * 12 + 9 : s + 48;
+  if (t.validTo) max = Math.min(max, mIdx(t.validTo));
+  const out = [];
+  for (let i = s; i <= max; i += LEN[iv]) out.push(i);
+  return out;
+}
+// Ohne Ende läuft eine Übernahme weiter (null). 3 Jahre ist immer genau ein Zeitraum.
+function effEnd(c, iv) {
+  if (c.end != null) return c.end;
+  return iv === "J3" ? c.start : null;
+}
+function claimActive(c, iv) { const e = effEnd(c, iv); return e == null || nowIdx() < e + LEN[iv]; }
+function unitsInSeason(c, iv, season) {
+  if (iv === "J3") { const y = Math.floor(c.start / 12); return season >= y && season <= y + 2 ? 1 : 0; }
+  const e = effEnd(c, iv), cap = e == null ? season * 12 + 11 : Math.min(e, season * 12 + 11);
+  let n = 0;
+  for (let i = c.start; i <= cap; i += LEN[iv]) if (Math.floor(i / 12) === season) n++;
+  return n;
+}
+const allReported = (c, iv) => { const e = effEnd(c, iv); return e != null && reportStart(c, iv) > e; };
+const askKeep = (c, iv, e) => { const eff = effEnd(c, iv); return iv !== "J3" && (eff == null || e < eff); };
+function reportStart(c, iv) { return c.doneUntil != null ? c.doneUntil + LEN[iv] : c.start; }
+function reportOptions(c, iv) {
+  const s = reportStart(c, iv), eff = effEnd(c, iv), cur = unitOf(nowIdx(), iv === "J3" ? "J" : iv);
+  if ((eff != null && s > eff) || s > cur) return [];
+  if (iv === "J3") return [s];
+  const out = [];
+  for (let i = s; i <= (eff == null ? cur : Math.min(eff, cur)); i += LEN[iv]) out.push(i);
+  return out;
+}
+
 /* ---------- Beispieldaten ---------- */
 function seed() {
   const DESC = {
@@ -552,44 +631,54 @@ function seed() {
   members.forEach(x => { x.since = since[x.chorId] || "2024-05-06"; });
   // Als erledigt gemeldete Aufgaben (status: reported | rejected)
   const reports = [
-    { id: "r1", by: "m-S1-Anna", taskId: "t18", date: "2026-11-03", status: "reported" },
-    { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported" },
-    { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported" }
+    { id: "r1", by: "m-S1-Anna", taskId: "t18", date: "2026-11-03", status: "reported", periodStart: mIdx("2026-09"), periodEnd: mIdx("2026-10"), points: 6 },
+    { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5 },
+    { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 15 }
   ];
-  return { v: 5, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  return { v: 6, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
     admin: {
       id: "u-demo", email: "demo@chora.app", verified: true, active: true, roles: ROLES.map(r => r.key), memberSince: "2014-09-01",
-      reports: [{ taskId: "t19", date: "2026-11-04", status: "reported" }],
+      reports: [{ taskId: "t19", date: "2026-11-04", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5, keep: true }],
       profile: { firstName: "Lea", lastName: "Sommer", voice: "A1", chorId: "A1-Lea" },
       claims: ["t18", "t01", "t19"],
+      claimInfo: {
+        t18: { start: mIdx("2026-09"), end: null, doneUntil: mIdx("2026-10") },
+        t01: { start: mIdx("2026-10"), end: mIdx("2027-03"), doneUntil: mIdx("2026-10") },
+        t19: { start: mIdx("2026-07"), end: null, doneUntil: null }
+      },
       checks: [
-        { taskId: "t18", date: "2026-10-28", points: 3, checker: "A2-Katrin" },
-        { taskId: "t01", date: "2026-10-14", points: 6, checker: "B-Thomas" },
-        { taskId: "t18", date: "2026-09-09", points: 3, checker: "S1-Anna" }
+        { taskId: "t18", date: "2026-10-28", points: 3, checker: "A2-Katrin", periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), interval: "M" },
+        { taskId: "t01", date: "2026-10-14", points: 6, checker: "B-Thomas", periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), interval: "M" },
+        { taskId: "t18", date: "2026-09-09", points: 3, checker: "S1-Anna", periodStart: mIdx("2026-09"), periodEnd: mIdx("2026-09"), interval: "M" }
       ]
     },
     member: {
       id: "u-demo2", email: "jan@chora.app", verified: true, active: true, roles: [], memberSince: "2024-01-08",
       reports: [{ taskId: "t08", date: "2026-11-02", status: "rejected", checker: "B-Thomas", decidedAt: "2026-11-04",
+        periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), points: 10, keep: true,
         comment: "Beim Aufbau am 1. November warst du nicht auf der Liste. Meld dich bitte kurz bei mir, dann klären wir das." }],
       profile: { firstName: "Jan", lastName: "Weber", voice: "T", chorId: "T-Jan" },
       claims: ["t08", "t10"],
+      claimInfo: {
+        t08: { start: mIdx("2026-07"), end: mIdx("2027-04"), doneUntil: mIdx("2026-07") },
+        t10: { start: mIdx("2026-07"), end: null, doneUntil: mIdx("2026-07") }
+      },
       checks: [
-        { taskId: "t10", date: "2026-10-02", points: 5, checker: "B-Thomas" },
-        { taskId: "t08", date: "2026-09-20", points: 10, checker: "T-Jonas" }
+        { taskId: "t10", date: "2026-10-02", points: 5, checker: "B-Thomas", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), interval: "Q" },
+        { taskId: "t08", date: "2026-09-20", points: 10, checker: "T-Jonas", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), interval: "Q" }
       ]
     }
   };
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v5";
+const KEY = "chora.v6";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 5) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 6) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -632,7 +721,7 @@ const Api = {
     await wait();
     email = norm(email);
     if (DB.users[email]) throw new ApiError("exists", "Für diese Adresse gibt es schon ein Konto. Melde dich an.");
-    DB.users[email] = { id: "u-" + Date.now().toString(36), email, pw: await sha(password), verified: false, active: true, roles: [], memberSince: todayISO(), profile: null, claims: [], checks: [] };
+    DB.users[email] = { id: "u-" + Date.now().toString(36), email, pw: await sha(password), verified: false, active: true, roles: [], memberSince: todayISO(), profile: null, claims: [], claimInfo: {}, checks: [] };
     saveDB();
     return { status: "verification_required" };
   },
@@ -724,33 +813,46 @@ const Api = {
     DB.tasks.push(t); saveDB();
     return t.id;
   },
-  // POST {apiBase}/tasks/:id/claim
-  async claim(id) {
+  // Übernehmen mit Start und optionalem Ende (Monats-Index)
+  async claim(id, start, end) {
     await wait();
     const u = me(), t = DB.tasks.find(x => x.id === id);
-    if (u.claims.includes(id)) throw new ApiError("dup", "Du hast diese Aufgabe schon übernommen.");
-    if (t.assigned >= t.total) throw new ApiError("full", "Alle Plätze dieser Aufgabe sind schon vergeben.");
-    t.assigned++; u.claims.push(id); saveDB();
+    if (Api.myClaim(id)) throw new ApiError("dup", "Du hast diese Aufgabe schon übernommen.");
+    if (!startOptions(t).includes(start)) throw new ApiError("start", "Dieser Start ist nicht mehr oder noch nicht wählbar.");
+    if (end != null && !endOptions(t, start).includes(end)) throw new ApiError("end", "Dieses Ende ist nicht wählbar.");
+    if (t.assigned >= t.total) throw new ApiError("full", "Für diesen Zeitraum sind alle Plätze vergeben.");
+    u.claimInfo = u.claimInfo || {};
+    u.claimInfo[id] = { start, end: t.interval === "J3" ? null : end, doneUntil: null };
+    t.assigned++; if (!u.claims.includes(id)) u.claims.push(id); saveDB();
   },
   async unclaim(id) {
     await wait(120);
     const u = me(), t = DB.tasks.find(x => x.id === id);
     DB.reports = DB.reports.filter(r => !(r.by === myKey() && r.taskId === id));
+    if (u.claimInfo) delete u.claimInfo[id];
     u.claims = u.claims.filter(x => x !== id); t.assigned = Math.max(0, t.assigned - 1); saveDB();
+  },
+  myClaim(id) {
+    const u = me(), t = DB.tasks.find(x => x.id === id);
+    const c = u && u.claimInfo && u.claimInfo[id];
+    return c && t && u.claims.includes(id) && claimActive(c, t.interval) ? c : undefined;
   },
   // Eigene Meldung zu einer übernommenen Aufgabe
   myReport(taskId) { return DB.reports.find(r => r.by === myKey() && r.taskId === taskId); },
-  // POST {apiBase}/tasks/:id/done
-  async markDone(taskId) {
+  // Als erledigt melden: Zeitraum vom ersten offenen Abschnitt bis "end"
+  async markDone(taskId, end, keep) {
     await wait();
-    const u = me();
-    if (!u.claims.includes(taskId)) throw new ApiError("claim", "Du hast diese Aufgabe nicht übernommen.");
-    const r = Api.myReport(taskId);
-    if (r) { r.status = "reported"; r.date = todayISO(); delete r.comment; delete r.checker; delete r.decidedAt; }
-    else DB.reports.push({ id: "r" + Date.now().toString(36), by: myKey(), taskId, date: todayISO(), status: "reported" });
-    saveDB();
+    const t = DB.tasks.find(x => x.id === taskId), c = Api.myClaim(taskId), iv = t.interval;
+    if (!c) throw new ApiError("claim", "Du hast diese Aufgabe nicht übernommen.");
+    const old = Api.myReport(taskId);
+    if (old && old.status === "reported") throw new ApiError("pending", "Es gibt schon eine offene Meldung.");
+    const opts = reportOptions(c, iv), s = reportStart(c, iv), e = iv === "J3" ? s : end;
+    if (!opts.includes(e)) throw new ApiError("period", "Dieser Zeitraum ist nicht wählbar.");
+    const r = { id: old ? old.id : "r" + Date.now().toString(36), by: myKey(), taskId, date: todayISO(), status: "reported",
+      periodStart: s, periodEnd: e, points: unitCount(s, e, iv) * t.points, keep: keep !== false || !askKeep(c, iv, e) };
+    DB.reports = DB.reports.filter(x => x !== old); DB.reports.push(r); saveDB();
   },
-  // DELETE {apiBase}/tasks/:id/done
+  // Offene Meldung zurücknehmen
   async undoDone(taskId) {
     await wait(150);
     DB.reports = DB.reports.filter(r => !(r.by === myKey() && r.taskId === taskId && r.status === "reported"));
@@ -760,14 +862,25 @@ const Api = {
   pendingReports() {
     if (!can("aufgabenchecker")) return [];
     return DB.reports.filter(r => r.status === "reported").sort((a, b) => a.date.localeCompare(b.date))
-      .map(r => ({ ...r, task: DB.tasks.find(t => t.id === r.taskId), reporter: reporterOf(r.by), own: r.by === myKey() }));
+      .map(r => { const t = DB.tasks.find(x => x.id === r.taskId) || {};
+        return { ...r, interval: t.interval, task: { title: t.title, points: r.points || t.points }, reporter: reporterOf(r.by), own: r.by === myKey() }; });
   },
   // POST {apiBase}/checks/:id/confirm
   async confirmReport(id) {
     await wait();
-    const r = checkable(id), t = DB.tasks.find(x => x.id === r.taskId);
-    if (r.by.startsWith("u:")) DB.users[r.by.slice(2)].checks.push({ taskId: t.id, date: todayISO(), points: t.points, checker: me().profile.chorId });
-    else { const m = DB.members.find(x => x.id === r.by); if (m) m.collected += t.points; }
+    const r = checkable(id), t = DB.tasks.find(x => x.id === r.taskId), pts = r.points || t.points;
+    if (r.by.startsWith("u:")) {
+      const owner = DB.users[r.by.slice(2)];
+      owner.checks.push({ taskId: t.id, date: todayISO(), points: pts, checker: me().profile.chorId,
+        periodStart: r.periodStart, periodEnd: r.periodEnd, interval: t.interval });
+      const c = owner.claimInfo && owner.claimInfo[t.id];
+      if (c) {
+        c.doneUntil = r.periodEnd;
+        if (!r.keep) c.end = r.periodEnd;
+        if (!claimActive(c, t.interval)) { delete owner.claimInfo[t.id]; owner.claims = owner.claims.filter(x => x !== t.id); t.assigned = Math.max(0, t.assigned - 1); }
+      }
+    }
+    else { const m = DB.members.find(x => x.id === r.by); if (m) m.collected += pts; }
     DB.reports = DB.reports.filter(x => x !== r); saveDB();
   },
   // POST {apiBase}/checks/:id/reject {comment}
@@ -785,7 +898,11 @@ const Api = {
   },
   // GET {apiBase}/me/points
   pointsOf(u) {
-    const committed = u.claims.reduce((s, id) => s + ((DB.tasks.find(t => t.id === id) || {}).points || 0), 0);
+    const season = new Date().getFullYear();
+    const committed = Object.entries(u.claimInfo || {}).reduce((s, [id, c]) => {
+      const t = DB.tasks.find(x => x.id === id);
+      return t ? s + t.points * unitsInSeason(c, t.interval, season) : s;
+    }, 0);
     const collected = u.checks.reduce((s, c) => s + c.points, 0);
     return { committed, collected, missing: Math.max(0, committed - collected) };
   },
@@ -825,7 +942,7 @@ const Api = {
 /* =====================================================================
    Echte Daten: Supabase (Datenbank) + Edge Functions (WorkOS-Anmeldung)
    ===================================================================== */
-const CACHE = { me: null, reports: {}, lastCheck: {}, points: null, members: [], pending: [], categories: [] };
+const CACHE = { me: null, reports: {}, claims: {}, lastCheck: {}, points: null, members: [], pending: [], categories: [] };
 function isoLocal(ts) {
   if (!ts) return "";
   const d = new Date(ts);
@@ -898,21 +1015,26 @@ async function reload() {
   DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
     interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max, assigned: t.assigned,
     validFrom: t.valid_from, validTo: t.valid_to }));
-  CACHE.reports = {}; CACHE.lastCheck = {};
+  CACHE.reports = {}; CACHE.lastCheck = {}; CACHE.claims = {};
+  const ix = d => (d ? mIdx(d) : null);
   (tasks || []).forEach(t => {
+    if (t.claim_start) CACHE.claims[t.id] = { start: ix(t.claim_start), end: ix(t.claim_end), doneUntil: ix(t.claim_done_until) };
     if (t.report_status) CACHE.reports[t.id] = { status: t.report_status, date: isoLocal(t.reported_at), comment: t.report_comment || "",
-      checker: t.report_checker || "", decidedAt: isoLocal(t.decided_at) };
+      checker: t.report_checker || "", decidedAt: isoLocal(t.decided_at), periodStart: ix(t.report_start), periodEnd: ix(t.report_end),
+      points: t.report_points, keep: t.report_keep };
     if (t.last_checked_on) CACHE.lastCheck[t.id] = { date: t.last_checked_on, checker: t.last_checker || "" };
   });
   CACHE.points = points;
   CACHE.members = (members || []).map(x => ({ ...x, voice: x.voice || "U", chorId: x.chorId || "", roles: x.roles || [] }));
   CACHE.pending = (pending || []).map(r => ({ id: r.id, date: isoLocal(r.reported_at), task: { title: r.task_title, points: r.points },
+    interval: r.task_period, periodStart: ix(r.period_start), periodEnd: ix(r.period_end),
     reporter: { chorId: r.reporter_chor_id || "", voice: r.reporter_voice || "U" }, own: r.own }));
   CACHE.me = {
     id: m.id, email: m.email || S.email, roles, active: m.active, memberSince: m.memberSince,
     profile: { firstName: m.firstName, lastName: m.lastName, voice: m.voice, chorId: m.chorId || "" },
     claims: (tasks || []).filter(t => t.mine).map(t => t.id),
-    checks: (checks || []).map(c => ({ taskId: c.task_id, title: c.task_title, date: c.checked_on, points: c.points, checker: c.checker_chor_id || "" }))
+    checks: (checks || []).map(c => ({ taskId: c.task_id, title: c.task_title, date: c.checked_on, points: c.points, checker: c.checker_chor_id || "",
+      interval: c.period, periodStart: ix(c.period_start), periodEnd: ix(c.period_end) }))
   };
 }
 const taskRow2db = d => ({ title: d.title, description: d.description || null, category: d.category, period: d.interval,
@@ -960,9 +1082,9 @@ const RealApi = {
     await reload();
     return rows && rows[0] ? rows[0].id : null;
   },
-  async claim(id) { await Remote.rpc("claim_task", { p_task: id }); await reload(); },
+  async claim(id, start, end) { await Remote.rpc("claim_task", { p_task: id, p_start: mIso(start), p_end: end != null ? mIso(end) : null }); await reload(); },
   async unclaim(id) { await Remote.rpc("unclaim_task", { p_task: id }); await reload(); },
-  async markDone(id) { await Remote.rpc("report_done", { p_task: id }); await reload(); },
+  async markDone(id, end, keep) { await Remote.rpc("report_done", { p_task: id, p_end: end != null ? mIso(end) : null, p_keep: keep !== false }); await reload(); },
   async undoDone(id) { await Remote.rpc("withdraw_report", { p_task: id }); await reload(); },
   async confirmReport(id) { await Remote.rpc("confirm_report", { p_report: id }); await reload(); },
   async rejectReport(id, comment) { await Remote.rpc("reject_report", { p_report: id, p_comment: comment || null }); await reload(); },
@@ -978,6 +1100,7 @@ const RealApi = {
   async renameCategory(oldName, name) { await Remote.rpc("rename_category", { p_old: oldName, p_new: name }); await reload(); },
   async deleteCategory(name) { await Remote.rpc("delete_category", { p_name: name }); await reload(); },
   myReport(taskId) { return CACHE.reports[taskId]; },
+  myClaim(taskId) { return CACHE.claims[taskId]; },
   pendingReports() { return CACHE.pending; },
   members() { return CACHE.members; },
   pointsOf() {
@@ -1028,7 +1151,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1275,21 +1398,35 @@ function taskDetail(t) {
   const today = todayISO(), notYet = today < t.validFrom, expired = !!t.validTo && today > t.validTo;
   let btn, note = "";
   if (mine) {
-    const r = Api.myReport(t.id), last = lastCheckFor(t.id);
-    const markBtn = `<button class="btn btn-primary btn-block" data-act="done" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.check}Als erledigt melden</button>`;
+    const r = Api.myReport(t.id), last = lastCheckFor(t.id), c = Api.myClaim(t.id), iv = t.interval;
+    let claimInfo = "";
+    if (c) {
+      const e = effEnd(c, iv);
+      claimInfo = `<div class="status ok"><b>Übernommen: ${e == null ? `ab ${unitLabel(c.start, iv)}, ohne Ende` : rangeLabel(c.start, e, iv)}</b>${c.doneUntil != null ? `Bestätigt bis ${unitLabel(c.doneUntil, iv)}.` : ""}</div>`;
+    }
+    const opts = c ? reportOptions(c, iv) : [];
+    const markBtn = opts.length
+      ? `<button class="btn btn-primary btn-block" data-act="done" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${I.check}Als erledigt melden</button>`
+      : `<button class="btn btn-primary btn-block" disabled>${I.check}Als erledigt melden</button>`;
+    const markHint = !c || opts.length ? "" : (allReported(c, iv) ? "Für diese Übernahme ist alles gemeldet." : `Melden kannst du ab ${unitLabel(reportStart(c, iv), iv)}.`);
+    const doneArea = S.reporting === t.id && c && opts.length ? reportForm(t, c) : markBtn;
     if (r && r.status === "reported") {
-      btn = `<div class="status wait" role="status"><b>Als erledigt gemeldet am ${fmtDate(r.date)}</b>Ein Aufgabenchecker bestätigt das noch.</div>
+      btn = `${claimInfo}<div class="status wait" role="status"><b>Als erledigt gemeldet${r.periodStart != null ? `: ${rangeLabel(r.periodStart, r.periodEnd, iv)}` : ` am ${fmtDate(r.date)}`}${r.points ? ` · ${P(r.points)}` : ""}</b>Ein Aufgabenchecker bestätigt das noch.${r.keep === false ? " Danach endet deine Übernahme." : ""}</div>
         <button class="btn btn-secondary btn-block" data-act="undo-done" data-id="${t.id}">${I.reset}Meldung zurücknehmen</button>`;
     } else if (r && r.status === "rejected") {
-      btn = `<div class="status no" role="status"><b>Abgelehnt${r.checker ? ` von ${esc(r.checker)}` : ""}${r.decidedAt ? ` am ${fmtDate(r.decidedAt)}` : ""}</b>
-        ${r.comment ? `<blockquote>${esc(r.comment)}</blockquote>` : "Es wurde kein Kommentar angegeben."}</div>${markBtn}`;
-    } else btn = markBtn;
-    note = last ? `Zuletzt bestätigt am ${fmtDate(last.date)} von ${esc(last.checker)}.` : "Du hast diese Aufgabe übernommen. Melde sie, sobald du sie erledigt hast.";
+      btn = `${claimInfo}<div class="status no" role="status"><b>Abgelehnt${r.checker ? ` von ${esc(r.checker)}` : ""}${r.decidedAt ? ` am ${fmtDate(r.decidedAt)}` : ""}${r.periodStart != null ? ` (${rangeLabel(r.periodStart, r.periodEnd, iv)})` : ""}</b>
+        ${r.comment ? `<blockquote>${esc(r.comment)}</blockquote>` : "Es wurde kein Kommentar angegeben."}</div>${doneArea}`;
+    } else btn = claimInfo + doneArea;
+    note = markHint || (last ? `Zuletzt bestätigt am ${fmtDate(last.date)} von ${esc(last.checker)}.` : "Melde die Aufgabe, sobald du sie erledigt hast.");
   }
   else if (expired) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = `Die Aufgabe war nur bis ${fmtDate(t.validTo)} gültig.`; }
   else if (notYet) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = `Du kannst die Aufgabe ab ${fmtDate(t.validFrom)} übernehmen.`; }
-  else if (full) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = "Alle Plätze sind vergeben."; }
-  else { btn = `<button class="btn btn-primary btn-block" data-act="claim" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Aufgabe übernehmen</button>`; note = free === 1 ? "Noch 1 Platz frei." : `Noch ${free} Plätze frei.`; }
+  else if (!startOptions(t).length) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = "Im Moment ist kein Start wählbar."; }
+  else if (S.claiming === t.id) { btn = claimForm(t); note = ""; }
+  else {
+    btn = `<button class="btn btn-primary btn-block" data-act="claim" data-id="${t.id}">${I.plus}Aufgabe übernehmen</button>`;
+    note = full ? "Im Moment sind alle Plätze vergeben. Für einen späteren Zeitraum kannst du es trotzdem versuchen." : free === 1 ? "Noch 1 Platz frei." : `Noch ${free} Plätze frei.`;
+  }
   const dots = t.total <= 50 ? `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${[i < t.assigned ? (mine && i === t.assigned - 1 ? "me" : "on") : "", i < (t.min || 0) ? "req" : ""].join(" ").trim()}"></i>`).join("")}</div>` : "";
   const below = (t.min || 0) - t.assigned;
   const seatCap = `${t.assigned} von ${t.total} Plätzen vergeben${t.min && t.min !== t.total ? ` · mindestens ${t.min}` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen noch ${below} Personen`}` : ""}`;
@@ -1315,6 +1452,56 @@ function taskDetail(t) {
   </article>`;
 }
 
+function claimHint(t, s) {
+  const iv = t.interval;
+  if (iv === "J3") return `Die Aufgabe gilt für ${unitLabel(s, iv)}.`;
+  return "Ohne Ende läuft die Übernahme weiter, bis du beim Melden angibst, dass du aufhörst. Das Ende zählt mit.";
+}
+function endSelect(t, s, sel) {
+  return `<option value="">ohne Ende</option>` + endOptions(t, s).map(i => `<option value="${i}" ${i === sel ? "selected" : ""}>${unitLabel(i, t.interval)}</option>`).join("");
+}
+function claimForm(t) {
+  const iv = t.interval, starts = startOptions(t);
+  const s = starts.includes(S.claimStart) ? S.claimStart : starts[0];
+  return `<form class="report-form" id="f-claim" data-id="${t.id}" novalidate>
+    <div class="${iv === "J3" ? "" : "two"}">
+      <div class="field"><label for="cl-start">Start</label>
+        <select class="select" id="cl-start" name="start">${starts.map(i => `<option value="${i}" ${i === s ? "selected" : ""}>${unitLabel(i, iv)}</option>`).join("")}</select></div>
+      ${iv === "J3" ? "" : `<div class="field"><label for="cl-end">Ende <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <select class="select" id="cl-end" name="end">${endSelect(t, s, null)}</select></div>`}
+    </div>
+    <p class="cta-note" id="cl-hint" style="text-align:left;margin:0">${claimHint(t, s)}</p>
+    <div class="edit-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Übernehmen</button>
+      <button class="btn btn-ghost" type="button" data-act="claim-cancel">Abbrechen</button>
+    </div>
+  </form>`;
+}
+function reportSum(t, s, e) {
+  const n = unitCount(s, e, t.interval);
+  return `${t.interval === "J3" ? "" : `${n} ${unitWord(n, t.interval)} × ${P(t.points)} = `}<b>${P(n * t.points)}</b>`;
+}
+function reportForm(t, c) {
+  const iv = t.interval, opts = reportOptions(c, iv), s = opts[0];
+  const sel = opts[opts.length - 1];
+  return `<form class="report-form" id="f-report" data-id="${t.id}" novalidate>
+    <div class="field"><label for="rp-end">Zeitraum, für den du die Aufgabe erledigt hast</label>
+      ${iv === "J3" ? `<div class="period-fixed">${unitLabel(s, iv)}</div>`
+        : `<div class="period-row"><span>${unitLabel(s, iv)} bis</span>
+            <select class="select" id="rp-end" name="end">${opts.map(i => `<option value="${i}" ${i === sel ? "selected" : ""}>${unitLabel(i, iv)}</option>`).join("")}</select></div>`}
+    </div>
+    <div class="report-sum" id="rp-sum">${reportSum(t, s, sel)}</div>
+    <fieldset class="field" id="rp-keep" ${askKeep(c, iv, sel) ? "" : "hidden"}>
+      <legend>Übernimmst du die Aufgabe danach weiter?</legend>
+      <label class="radio"><input type="radio" name="keep" value="1" checked>Ja, ich mache weiter</label>
+      <label class="radio"><input type="radio" name="keep" value="0">Nein, danach höre ich auf</label>
+    </fieldset>
+    <div class="edit-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.check}Melden</button>
+      <button class="btn btn-ghost" type="button" data-act="report-cancel">Abbrechen</button>
+    </div>
+  </form>`;
+}
 function taskEdit(t) {
   const isNew = !t;
   const d = S.taskDraft || t || { title: "", description: "", category: "", interval: "Q", points: 5, min: 1, total: 1, validFrom: todayISO(), validTo: "" };
@@ -1430,7 +1617,7 @@ function pointsView() {
       ${checks.length ? `<ul class="rows">${checks.map(c => {
         const t = DB.tasks.find(x => x.id === c.taskId);
         return `<li class="check"><span class="check-title">${esc(c.title || (t ? t.title : "Aufgabe"))}</span><span class="check-pts">+${P(c.points)}</span>
-          <span class="check-meta"><span class="num">${fmtDate(c.date)}</span><span class="checker">${I.stamp}bestätigt von <span class="badge">${esc(c.checker)}</span></span></span></li>`;
+          <span class="check-meta">${c.periodStart != null && c.interval ? `<span>${rangeLabel(c.periodStart, c.periodEnd, c.interval)}</span>` : ""}<span class="num">${fmtDate(c.date)}</span><span class="checker">${I.stamp}bestätigt von <span class="badge">${esc(c.checker)}</span></span></span></li>`;
       }).join("")}</ul>` : `<div class="empty" style="min-height:180px">${I.stamp}<div>Noch keine Aufgabenchecks.<br>Sobald jemand bestätigt, dass du eine Aufgabe erledigt hast, erscheint sie hier.</div></div>`}
     </section>
   </div></div>`;
@@ -1572,6 +1759,7 @@ function reportCard(r) {
   }
   return `<li class="report">
     <div class="report-head"><b>${esc(t.title)}</b><span class="check-pts">+${P(t.points)}</span></div>
+    ${r.periodStart != null && r.interval ? `<div class="period-fixed">${rangeLabel(r.periodStart, r.periodEnd, r.interval)}${r.interval === "J3" ? "" : ` · ${unitCount(r.periodStart, r.periodEnd, r.interval)} ${unitWord(unitCount(r.periodStart, r.periodEnd, r.interval), r.interval)}`}</div>` : ""}
     <div class="check-meta"><span>gemeldet am <span class="num">${fmtDate(r.date)}</span></span><span class="checker">von ${who}</span></div>
     ${actions}</li>`;
 }
@@ -1626,7 +1814,7 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null;
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null;
   if (!wide()) { S.taskId = null; S.memberId = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -1667,12 +1855,11 @@ document.addEventListener("click", async e => {
   }
   if (a === "group") { S.group = el.dataset.g; if (wide()) S.taskId = null; return render(); }
   if (a === "only-mine") { S.onlyMine = !S.onlyMine; if (wide()) S.taskId = null; return render(); }
-  if (a === "done" || a === "undo-done") {
+  if (a === "done") { S.reporting = el.dataset.id; S.claiming = null; render(); return; }
+  if (a === "undo-done") {
     const id = el.dataset.id; S.busy = true; render();
-    try {
-      if (a === "done") { await Api.markDone(id); S.busy = false; render(); toast("Als erledigt gemeldet.", async () => { await Api.undoDone(id); render(); }); }
-      else { await Api.undoDone(id); S.busy = false; render(); toast("Meldung zurückgenommen."); }
-    } catch (err) { S.busy = false; render(); toast(err.message); }
+    try { await Api.undoDone(id); S.busy = false; render(); toast("Meldung zurückgenommen."); }
+    catch (err) { S.busy = false; render(); toast(err.message); }
     return;
   }
   if (a === "confirm") {
@@ -1685,6 +1872,7 @@ document.addEventListener("click", async e => {
   if (a === "reject-cancel") { S.rejecting = null; return render(); }
   if (a === "vf") { S.voiceFilter = el.dataset.v; if (wide()) S.memberId = null; return render(); }
   if (a === "task") {
+    S.claiming = null; S.reporting = null;
     if (S.cats) { S.cats = false; S.catEdit = null; S.taskId = el.dataset.id; S.editTask = null; render(); return; }
     S.taskId = el.dataset.id; S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = "";
     if (wide()) { $("#detail-pane").innerHTML = taskDetail(DB.tasks.find(t => t.id === S.taskId)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
@@ -1697,15 +1885,10 @@ document.addEventListener("click", async e => {
     else { render(); $(".pane").scrollTop = 0; }
     return;
   }
-  if (a === "claim") {
-    const id = el.dataset.id; S.busy = true; render();
-    try {
-      await Api.claim(id); S.busy = false; render();
-      const t = DB.tasks.find(x => x.id === id);
-      toast(`Übernommen: ${P(t.points)} zugesagt`, async () => { await Api.unclaim(id); render(); toast("Übernahme zurückgenommen."); });
-    } catch (err) { S.busy = false; render(); toast(err.message); }
-    return;
-  }
+  if (a === "claim") { S.claiming = el.dataset.id; S.claimStart = null; S.reporting = null; render(); return; }
+  if (a === "claim-cancel") { S.claiming = null; render(); return; }
+  if (a === "report-cancel") { S.reporting = null; render(); return; }
+
   if (a === "undo") { const u = S.undo; $("#toast-host").innerHTML = ""; S.undo = null; if (u) u(); return; }
   if (a === "reset") return go({ confirmReset: true });
   if (a === "reset-no") return go({ confirmReset: false });
@@ -1714,6 +1897,19 @@ document.addEventListener("click", async e => {
 function scrollDetailTop() { const d = $("#detail-pane") || $(".pane"); if (d) d.scrollTop = 0; }
 document.addEventListener("change", async e => {
   const el = e.target;
+  if (el.id === "cl-start") {
+    const t = DB.tasks.find(x => x.id === el.form.dataset.id), s = Number(el.value);
+    S.claimStart = s;
+    const end = $("#cl-end"); if (end) end.innerHTML = endSelect(t, s, null);
+    $("#cl-hint").textContent = claimHint(t, s);
+    return;
+  }
+  if (el.id === "rp-end") {
+    const t = DB.tasks.find(x => x.id === el.form.dataset.id), c = Api.myClaim(t.id), e2 = Number(el.value);
+    $("#rp-sum").innerHTML = reportSum(t, reportStart(c, t.interval), e2);
+    $("#rp-keep").hidden = !askKeep(c, t.interval, e2);
+    return;
+  }
   if (!el.dataset || !el.dataset.role) return;
   try { await Api.setRole(el.dataset.id, el.dataset.role, el.checked); render(); }
   catch (err) { el.checked = !el.checked; toast(err.message); }
@@ -1767,6 +1963,26 @@ document.addEventListener("submit", async e => {
     if (v > todayISO()) return go({ errors: { since: "Das Datum darf nicht in der Zukunft liegen." } });
     try { await Api.setSince(id, v); go({ errors: {} }); toast("Datum gespeichert."); }
     catch (err) { toast(err.message); }
+    return;
+  }
+  if (f.id === "f-claim") {
+    const id = f.dataset.id, start = Number(f.start.value), end = f.end && f.end.value !== "" ? Number(f.end.value) : null;
+    const t = DB.tasks.find(x => x.id === id);
+    go({ busy: true });
+    try {
+      await Api.claim(id, start, end);
+      go({ busy: false, claiming: null });
+      toast(`Übernommen ab ${unitLabel(start, t.interval)}`, async () => { await Api.unclaim(id); render(); toast("Übernahme zurückgenommen."); });
+    } catch (err) { go({ busy: false }); toast(err.message); }
+    return;
+  }
+  if (f.id === "f-report") {
+    const id = f.dataset.id, end = f.end ? Number(f.end.value) : null;
+    const keepVal = new FormData(f).get("keep");
+    const keep = $("#rp-keep").hidden ? true : keepVal !== "0";
+    go({ busy: true });
+    try { await Api.markDone(id, end, keep); go({ busy: false, reporting: null }); toast("Als erledigt gemeldet."); }
+    catch (err) { go({ busy: false }); toast(err.message); }
     return;
   }
   if (f.id === "f-cat-add") {
