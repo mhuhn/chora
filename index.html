@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.7.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.8.0";</script>
 </head>
 <body>
 <style>
@@ -425,6 +425,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .radio input { width: 20px; height: 20px; accent-color: var(--orange); }
 fieldset.field { border: 0; padding: 0; margin: 0; }
 fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.lv-tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.missing { gap: 4px; }
+.role-list { display: flex; flex-wrap: wrap; gap: 6px; }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -538,7 +541,7 @@ function startOptions(t) {
   if (iv === "M") { first = d.getDate() <= 6 ? now : now + 1; last = first + 11; }
   else if (iv === "Q") { const q = unitOf(now, "Q"); first = (now === q && d.getDate() <= 15) ? q : q + 3; last = first + 21; }
   else { first = now - (now % 12); last = d.getMonth() >= 8 ? first + 12 : first; }
-  const lo = unitOf(mIdx(t.validFrom), iv === "J3" ? "J" : iv), hi = t.validTo ? mIdx(t.validTo) : Infinity;
+  const lo = t.validFrom ? unitOf(mIdx(t.validFrom), iv === "J3" ? "J" : iv) : -Infinity, hi = t.validTo ? mIdx(t.validTo) : Infinity;
   const out = [];
   for (let i = first; i <= last; i += STEP[iv]) if (i >= lo && i <= hi) out.push(i);
   return out;
@@ -546,8 +549,8 @@ function startOptions(t) {
 function endOptions(t, s) {
   const iv = t.interval;
   if (iv === "J3") return [];
-  const y = Math.floor(s / 12);
-  let max = iv === "M" ? (y + 1) * 12 + 11 : iv === "Q" ? (y + 1) * 12 + 9 : s + 48;
+  const now = nowIdx();   // Ende: Monat/Quartal höchstens 18 Monate, Jahr höchstens 1 Jahr in der Zukunft
+  let max = iv === "M" ? now + 18 : iv === "Q" ? unitOf(now + 18, "Q") : (now - (now % 12)) + 12;
   if (t.validTo) max = Math.min(max, mIdx(t.validTo));
   const out = [];
   for (let i = s; i <= max; i += LEN[iv]) out.push(i);
@@ -910,14 +913,14 @@ const Api = {
   // inaktive Mitglieder nur an Mitgliedsverwalter aus.
   members() {
     const u = me(), admin = can("mitgliedsverwalter");
-    const list = DB.members.map(m => ({ ...m, missing: Math.max(0, m.committed - m.collected) }));
+    const list = DB.members.map(m => ({ ...m, level: levelOf(m.collected + m.committed).name }));
     if (u && u.profile) {
       const p = Api.pointsOf(u);
-      list.push({ id: "me", me: true, ...u.profile, committed: p.committed, collected: p.collected, missing: p.missing, roles: [...(u.roles || [])], active: u.active !== false, since: u.memberSince || todayISO() });
+      list.push({ id: "me", me: true, ...u.profile, committed: p.committed, collected: p.collected, level: levelOf(p.committed + p.collected).name, roles: [...(u.roles || [])], active: u.active !== false, since: u.memberSince || todayISO() });
     }
-    if (admin) return list.sort((a, b) => (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName, "de"));
+    if (admin) return list.sort((a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de"));
     return list.filter(m => m.active)
-      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice }))
+      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice, level: m.level }))
       .sort((a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de"));
   },
   // PUT {apiBase}/members/:id/active → Backend: WorkOS deactivate/reactivate organization membership
@@ -1039,7 +1042,7 @@ async function reload() {
 }
 const taskRow2db = d => ({ title: d.title, description: d.description || null, category: d.category, period: d.interval,
   points: d.points, seats_min: d.min, seats_max: d.total,
-  valid_from: d.validFrom, valid_to: d.validTo || null });
+  valid_from: d.validFrom || null, valid_to: d.validTo || null });
 async function afterAuth(r, email, password) {
   if (r.status === "verification_required") {
     S.pending = { token: r.pendingToken, email, password };
@@ -1151,7 +1154,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1297,7 +1300,7 @@ function viewApp() {
   const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId));
-  const title = catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
+  const title = S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
   const cats = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew && !cats
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
@@ -1395,7 +1398,7 @@ function firstVisibleTaskId() {
 function taskDetail(t) {
   if (!t) return `<div class="empty">${I.tasks}<div>Diese Aufgabe gibt es nicht mehr.</div></div>`;
   const u = me(), mine = u.claims.includes(t.id), full = t.assigned >= t.total, free = t.total - t.assigned;
-  const today = todayISO(), notYet = today < t.validFrom, expired = !!t.validTo && today > t.validTo;
+  const today = todayISO(), notYet = !!t.validFrom && today < t.validFrom, expired = !!t.validTo && today > t.validTo;
   let btn, note = "";
   if (mine) {
     const r = Api.myReport(t.id), last = lastCheckFor(t.id), c = Api.myClaim(t.id), iv = t.interval;
@@ -1438,15 +1441,9 @@ function taskDetail(t) {
     <div class="scope"><b>${P(t.points)}</b><span>pro ${INTERVALS[t.interval]}</span></div>
     <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${seatCap}</div></div>
     <dl class="props">
-      <div><dt>Aufgabe</dt><dd>${esc(t.title)}</dd></div>
       <div><dt>Kategorie</dt><dd>${esc(t.category)}</dd></div>
-      <div><dt>Intervall</dt><dd>${INTERVALS[t.interval]}</dd></div>
-      <div><dt>Punkte</dt><dd>${P(t.points)}</dd></div>
-      <div><dt>Plätze min.</dt><dd>${t.min || 1}</dd></div>
-      <div><dt>Plätze max.</dt><dd>${t.total}</dd></div>
-      <div><dt>Vergeben</dt><dd>${t.assigned}</dd></div>
-      <div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>
-      <div><dt>Gültig bis</dt><dd>${t.validTo ? fmtDate(t.validTo) : "dauerhaft"}</dd></div>
+      ${t.validFrom ? `<div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>` : ""}
+      ${t.validTo ? `<div><dt>Gültig bis</dt><dd>${fmtDate(t.validTo)}</dd></div>` : ""}
     </dl>
     <div class="cta">${btn}<p class="cta-note">${note}</p></div>
   </article>`;
@@ -1504,7 +1501,7 @@ function reportForm(t, c) {
 }
 function taskEdit(t) {
   const isNew = !t;
-  const d = S.taskDraft || t || { title: "", description: "", category: "", interval: "Q", points: 5, min: 1, total: 1, validFrom: todayISO(), validTo: "" };
+  const d = S.taskDraft || t || { title: "", description: "", category: "", interval: "Q", points: 5, min: 1, total: 1, validFrom: "", validTo: "" };
   const cats = Api.categories();
   const num = (k, label, min, max) => `<div class="field"><label for="te-${k}">${label}</label>
     <input class="input num" id="te-${k}" name="${k}" type="number" inputmode="numeric" min="${min}" ${max ? `max="${max}"` : ""} step="1" value="${esc(d[k])}"${inv(k)}>${fieldErr(k)}</div>`;
@@ -1528,7 +1525,8 @@ function taskEdit(t) {
     ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Vergeben: ${t.assigned}. Die Zahl ergibt sich aus den Übernahmen im laufenden Jahr.</p>`}
     <div class="two">
       <div class="field"><label for="te-validFrom">Gültig ab</label>
-        <input class="input" id="te-validFrom" name="validFrom" type="date" value="${esc(d.validFrom)}"${inv("validFrom")}>${fieldErr("validFrom")}</div>
+        <input class="input" id="te-validFrom" name="validFrom" type="date" value="${esc(d.validFrom || "")}"${inv("validFrom")}>
+        ${S.errors.validFrom ? fieldErr("validFrom") : '<div class="hint">Leer lassen = ab sofort gültig.</div>'}</div>
       <div class="field"><label for="te-validTo">Gültig bis</label>
         <input class="input" id="te-validTo" name="validTo" type="date" value="${esc(d.validTo || "")}"${inv("validTo")}>
         ${S.errors.validTo ? fieldErr("validTo") : '<div class="hint">Leer lassen = dauerhaft gültig.</div>'}</div>
@@ -1555,7 +1553,6 @@ function validateTask(t, existing) {
   if (!(t.total >= 1 && t.total <= 50)) e.total = "Ganze Zahl von 1 bis 50.";
   else if (t.min >= 1 && t.total < t.min) e.total = "Mindestens so viele wie das Minimum.";
   else if (existing && t.total < existing.assigned) e.total = `Es sind schon ${existing.assigned} Plätze vergeben.`;
-  if (!t.validFrom) e.validFrom = "Bitte wähle ein Datum.";
   if (t.validTo && t.validFrom && t.validTo < t.validFrom) e.validTo = "Muss am oder nach „Gültig ab“ liegen.";
   return e;
 }
@@ -1631,23 +1628,24 @@ function filteredMembers() {
     (!q || `${m.firstName || ""} ${m.lastName || ""} ${m.chorId || ""}`.toLowerCase().includes(q)));
 }
 const voiceTag = v => `<span class="vtag">${v === "U" ? "?" : v}</span>`;
+const lvTag = name => { const l = LEVELS.find(x => x.name === name) || LEVELS[0]; return `<span class="lv-tag lv-${l.cls}">${l.name}</span>`; };
+const cidText = m => (m.chorId ? esc(m.chorId) : '<span style="color:var(--muted)">ohne Chor-ID</span>');
 function memberRow(m) {
   const admin = can("mitgliedsverwalter");
   const cur = S.memberId === m.id && wide() ? 'aria-current="true"' : "";
   if (!admin) {
     return `<li><button class="row gutter" data-act="member" data-id="${esc(m.id)}" ${cur}>
-      <span class="avatar${m.me ? " me" : ""}">${m.voice === "U" ? "?" : m.voice}</span>
-      <span class="row-main"><span class="row-title">${m.chorId ? esc(m.chorId) : '<span style="color:var(--muted)">ohne Chor-ID</span>'}${m.me ? '<span class="mine-dot">DU</span>' : ""}</span>
-      <span class="row-sub">${voiceLabel(m.voice)}</span></span>${I.chev}</button></li>`;
+      <span class="row-main"><span class="row-title">${cidText(m)}${m.me ? '<span class="mine-dot">DU</span>' : ""}</span>
+      <span class="row-sub">${voiceLabel(m.voice)}</span></span>
+      <span class="missing">${lvTag(m.level)}</span>${I.chev}</button></li>`;
   }
   return `<li><button class="row gutter${m.active ? "" : " inactive"}" data-act="member" data-id="${esc(m.id)}" ${cur}>
-    <span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
     <span class="row-main">
-      <span class="row-title">${esc(m.firstName)} ${esc(m.lastName)}${m.me ? '<span class="mine-dot">DU</span>' : ""}${m.active ? "" : '<span class="inactive-tag">INAKTIV</span>'}</span>
-      <span class="row-sub">${voiceTag(m.voice)} ${m.chorId ? `<span class="cid">${esc(m.chorId)}</span> · ` : ""}${voiceLabel(m.voice)}</span>
-      <span class="pts-line">gesammelt ${P(m.collected)} · zugesagt ${P(m.committed)} · seit ${m.since.slice(0, 4)}</span>
+      <span class="row-title">${cidText(m)}${m.me ? '<span class="mine-dot">DU</span>' : ""}${m.active ? "" : '<span class="inactive-tag">INAKTIV</span>'}</span>
+      <span class="row-sub">${esc(m.firstName)} ${esc(m.lastName)} · ${voiceLabel(m.voice)}</span>
+      <span class="pts-line">gesammelt ${P(m.collected)} · zugesagt ${P(m.committed)} · seit ${String(m.since).slice(0, 4)}</span>
     </span>
-    <span class="missing"><b>${P(m.collected + m.committed)}</b></span>
+    <span class="missing"><b>${P(m.collected + m.committed)}</b>${lvTag(m.level)}</span>
     ${I.chev}</button></li>`;
 }
 function memberListHTML() {
@@ -1683,35 +1681,53 @@ function memberDetail(m) {
       <dl class="props">
         <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
         <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
+        <div><dt>Status</dt><dd>${lvTag(m.level)}</dd></div>
       </dl>
       ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
     </article>`;
   }
+  return S.memberEdit === m.id ? memberEditView(m) : memberReadView(m);
+}
+function memberHead(m, eyebrow) {
+  return `<div class="person"><span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
+    <div class="headline" style="gap:4px"><div class="eyebrow">${eyebrow}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
+    <div class="row-sub">${esc(m.firstName)} ${esc(m.lastName)}</div></div></div>`;
+}
+function memberReadView(m) {
   const pct = m.committed ? Math.min(100, Math.round(m.collected / m.committed * 100)) : 0;
-  const roles = m.roles || [];
-  const status = m.me ? "" : (S.confirmDeact === m.id
-    ? `<div class="confirm" role="alert">${esc(m.firstName)} ${esc(m.lastName)} deaktivieren? Andere Mitglieder sehen ${esc(m.firstName)} dann nicht mehr in der Liste.
-        <div><button class="btn btn-primary btn-sm" data-act="deact-yes" data-id="${esc(m.id)}">Deaktivieren</button><button class="btn btn-secondary btn-sm" data-act="deact-no">Abbrechen</button></div></div>`
-    : m.active
-      ? `<button class="btn btn-danger" data-act="deact" data-id="${esc(m.id)}">${I.pause}Mitglied deaktivieren</button>`
-      : `<button class="btn btn-secondary" data-act="react" data-id="${esc(m.id)}">${I.check}Mitglied aktivieren</button>`);
+  const roles = (m.roles || []).map(k => (ROLES.find(r => r.key === k) || { label: k }).label);
   return `<article class="detail gutter">
-    <div class="person"><span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
-      <div class="headline" style="gap:4px"><div class="eyebrow">${voiceLabel(m.voice)}${m.active ? "" : " · inaktiv"}</div><h2>${esc(m.firstName)} ${esc(m.lastName)}</h2></div></div>
+    ${memberHead(m, voiceLabel(m.voice) + (m.active ? "" : " · inaktiv"))}
     <div class="stats">
       <div class="stat green"><span>Gesammelt</span><b>${P(m.collected)}</b></div>
       <div class="stat"><span>Zugesagt</span><b>${P(m.committed)}</b></div>
       <div class="stat orange"><span>Summe</span><b>${P(m.collected + m.committed)}</b></div>
     </div>
     <div><div class="meter" role="img" aria-label="${pct} Prozent gesammelt"><i style="width:${pct}%"></i></div>
-      <div class="meter-cap"><span>${pct} % der zugesagten Punkte</span><span></span></div></div>
+      <div class="meter-cap"><span>${pct} % der zugesagten Punkte</span><span>${lvTag(m.level)}</span></div></div>
     <dl class="props">
       <div><dt>Vorname</dt><dd>${esc(m.firstName)}</dd></div>
       <div><dt>Nachname</dt><dd>${esc(m.lastName)}</dd></div>
       <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
       <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
-      <div><dt>Status</dt><dd>${m.active ? "aktiv" : "inaktiv"}</dd></div>
+      <div><dt>Mitglied seit</dt><dd>${fmtDate(m.since)}</dd></div>
+      <div><dt>Zugang</dt><dd>${m.active ? "aktiv" : "inaktiv"}</dd></div>
+      <div style="grid-column:1/-1"><dt>Rollen</dt><dd>${roles.length ? `<span class="role-list">${roles.map(r => `<span class="badge">${esc(r)}</span>`).join("")}</span>` : "keine"}</dd></div>
     </dl>
+    <button class="btn btn-secondary" data-act="member-edit" data-id="${esc(m.id)}">${I.edit}Profil bearbeiten</button>
+    ${m.me ? `<p class="cta-note" style="text-align:left;margin:0">Name, Stimmgruppe und Chor-ID änderst du im Reiter <button class="link" data-act="tab" data-tab="profile">Profil</button>.</p>` : ""}
+  </article>`;
+}
+function memberEditView(m) {
+  const roles = m.roles || [];
+  const status = m.me ? "" : (S.confirmDeact === m.id
+    ? `<div class="confirm" role="alert">${esc(m.chorId || m.firstName)} deaktivieren? Andere Mitglieder sehen die Person dann nicht mehr in der Liste.
+        <div><button class="btn btn-primary btn-sm" data-act="deact-yes" data-id="${esc(m.id)}">Deaktivieren</button><button class="btn btn-secondary btn-sm" data-act="deact-no">Abbrechen</button></div></div>`
+    : m.active
+      ? `<button class="btn btn-danger" data-act="deact" data-id="${esc(m.id)}">${I.pause}Mitglied deaktivieren</button>`
+      : `<button class="btn btn-secondary" data-act="react" data-id="${esc(m.id)}">${I.check}Mitglied aktivieren</button>`);
+  return `<article class="detail gutter">
+    ${memberHead(m, "Profil bearbeiten")}
     <form class="field" id="f-since" data-id="${esc(m.id)}" novalidate>
       <label for="since-${esc(m.id)}">Mitglied seit</label>
       <div class="inline-form"><input class="input" type="date" id="since-${esc(m.id)}" name="since" value="${esc(m.since)}" max="${todayISO()}"${inv("since")}>
@@ -1726,8 +1742,8 @@ function memberDetail(m) {
           <span class="switch"><input type="checkbox" role="switch" id="${id}" data-role="${r.key}" data-id="${esc(m.id)}" ${roles.includes(r.key) ? "checked" : ""} ${locked ? "disabled" : ""}><span></span></span></div>`;
       }).join("")}</div>
     </section>
-    ${status ? `<div class="status-box">${status}</div>` : ""}
-    ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
+    ${status ? `<section style="display:grid;gap:8px"><h3 class="h3">Zugang</h3><div class="status-box">${status}</div></section>` : ""}
+    <button class="btn btn-primary" data-act="member-edit-done">${I.check}Fertig</button>
   </article>`;
 }
 
@@ -1814,7 +1830,7 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null;
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null;
   if (!wide()) { S.taskId = null; S.memberId = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -1831,6 +1847,7 @@ document.addEventListener("click", async e => {
   if (a === "tab") return setTab(el.dataset.tab);
   if (a === "back") {
     if (S.cats) { S.cats = false; S.catEdit = null; S.errors = {}; return render(); }
+    if (S.memberEdit) { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; return render(); }
     if (S.editTask) { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; return render(); }
     S.taskId = null; S.memberId = null; S.confirmDeact = null; return render();
   }
@@ -1879,8 +1896,10 @@ document.addEventListener("click", async e => {
     else { render(); $(".pane").scrollTop = 0; }
     return;
   }
+  if (a === "member-edit") { S.memberEdit = el.dataset.id; S.confirmDeact = null; S.errors = {}; render(); scrollDetailTop(); return; }
+  if (a === "member-edit-done") { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; render(); scrollDetailTop(); return; }
   if (a === "member") {
-    S.memberId = el.dataset.id; S.confirmDeact = null;
+    S.memberId = el.dataset.id; S.confirmDeact = null; S.memberEdit = null;
     if (wide()) { $("#detail-pane").innerHTML = memberDetail(Api.members().find(m => m.id === S.memberId)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
     else { render(); $(".pane").scrollTop = 0; }
     return;
