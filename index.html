@@ -1,0 +1,1718 @@
+<!doctype html>
+<html lang="de" class="pwa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chora</title>
+<meta name="description" content="Aufgaben und Punkte für deinen Chor">
+<meta name="theme-color" content="#f7f8f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12150d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chora">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.3.0";</script>
+</head>
+<body>
+<style>
+/* Layout: Smartphone = Kopfzeile, eine Spalte, Tab-Leiste unten.
+   Ab 768px = Liste links + Detail rechts. Ab 900px = Navigationsleiste links statt unten. */
+:root {
+  --bg: #f7f8f1;
+  --surface: #ffffff;
+  --surface-2: #eff1e4;
+  --ink: #1d2210;
+  --muted: #5f6750;
+  --line: #e1e4d3;
+  --green: #c7d01c;          /* Logo-Grün, für Flächen */
+  --green-soft: #eef2bf;
+  --green-ink: #566100;      /* Grün als Text auf hellem Grund */
+  --orange: #e8600b;         /* Logo-Orange, für Aktionen */
+  --orange-soft: #fde4d2;
+  --orange-ink: #b9480a;
+  --on-orange: #ffffff;
+  --on-green: #1d2210;
+  --danger: #b42318;
+  --gold: #a57800; --gold-soft: #fbefc5; --silver: #5f6b78; --silver-soft: #e7ebef;
+  --shadow: 0 1px 2px rgba(40, 48, 10, .06), 0 4px 16px rgba(40, 48, 10, .06);
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --radius: 14px;
+  --nav-h: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12150d; --surface: #1b1f14; --surface-2: #232819; --ink: #eef1e2; --muted: #a4ab91;
+    --line: #2d3322; --green: #c7d01c; --green-soft: #343b12; --green-ink: #d6de52;
+    --orange: #f2701c; --orange-soft: #3d2312; --orange-ink: #ff9a57; --on-orange: #1a0d03; --on-green: #1d2210;
+    --danger: #ff8a7a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.25);
+    --gold: #f0c445; --gold-soft: #3a3011; --silver: #c3ccd6; --silver-soft: #2a2f35;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12150d; --surface: #1b1f14; --surface-2: #232819; --ink: #eef1e2; --muted: #a4ab91;
+  --line: #2d3322; --green: #c7d01c; --green-soft: #343b12; --green-ink: #d6de52;
+  --orange: #f2701c; --orange-soft: #3d2312; --orange-ink: #ff9a57; --on-orange: #1a0d03; --on-green: #1d2210;
+  --danger: #ff8a7a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.25);
+  --gold: #f0c445; --gold-soft: #3a3011; --silver: #c3ccd6; --silver-soft: #2a2f35;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.45 var(--body); -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+}
+#root { height: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; border-radius: 8px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+.num { font-variant-numeric: tabular-nums; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------- Buttons & Formulare ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border-radius: 12px; border: 0;
+  font-weight: 650; font-size: 16px; text-decoration: none;
+  transition: transform .08s ease, filter .15s ease;
+}
+.btn:active { transform: scale(.98); }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn-primary { background: var(--orange); color: var(--on-orange); }
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-secondary { background: var(--surface-2); color: var(--ink); }
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-danger { background: transparent; color: var(--danger); }
+.btn-block { width: 100%; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: .5; cursor: default; transform: none; }
+.btn-done { background: var(--green-soft); color: var(--green-ink); opacity: 1 !important; }
+.link { background: none; border: 0; padding: 4px 2px; color: var(--orange-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+.field { display: grid; gap: 6px; align-content: start; }
+.field label { font-size: 14px; font-weight: 600; }
+.field .hint { font-size: 13px; color: var(--muted); }
+.field .err { font-size: 13px; color: var(--danger); font-weight: 600; }
+.input, .select {
+  width: 100%; min-height: 48px; padding: 0 14px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface);
+  font-size: 16px; /* verhindert Zoom auf iOS */
+}
+.input:focus, .select:focus { outline: none; border-color: var(--green-ink); box-shadow: 0 0 0 3px var(--green-soft); }
+.input[aria-invalid="true"] { border-color: var(--danger); }
+.form { display: grid; gap: 16px; }
+.form-error { background: var(--orange-soft); color: var(--orange-ink); padding: 12px 14px; border-radius: 12px; font-weight: 600; font-size: 14px; }
+
+.voices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.voice-opt { position: relative; }
+.voice-opt input { position: absolute; opacity: 0; inset: 0; }
+.voice-opt span {
+  display: grid; place-items: center; min-height: 48px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; font-size: 14px; text-align: center; line-height: 1.15; padding: 4px;
+}
+.voice-opt input:checked + span { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.voice-opt input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
+.voice-opt.wide { grid-column: span 2; }
+
+/* ---------- Anmeldung ---------- */
+.auth { min-height: 100%; display: grid; grid-template-columns: 1fr; background: var(--bg); }
+.auth-hero { display: none; }
+.auth-main { display: grid; align-content: center; justify-items: center; padding-block: 32px; overflow-y: auto; }
+.auth-card { width: 100%; max-width: 420px; display: grid; gap: 22px; }
+.brand { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.brand img { width: 84px; height: 84px; border-radius: 20px; box-shadow: var(--shadow); }
+.brand h1 { font-size: 40px; font-weight: 800; letter-spacing: -.03em; }
+.brand p { margin: 0; color: var(--muted); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: 12px; padding: 4px; }
+.seg button { border: 0; background: none; min-height: 40px; border-radius: 9px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.auth-step { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--orange-ink); }
+.auth-title { font-size: 26px; }
+.auth-text { margin: 0; color: var(--muted); }
+.code-input { letter-spacing: .5em; text-align: center; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.demo-note { font-size: 13px; color: var(--muted); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.auth-foot { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+
+@media (min-width: 900px) {
+  .auth { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .auth-hero {
+    display: grid; align-content: center; justify-items: start; gap: 24px;
+    background: var(--green); color: var(--on-green); padding: 48px max(48px, env(safe-area-inset-left, 0px));
+  }
+  .auth-hero img { width: 140px; height: 140px; border-radius: 32px; box-shadow: 0 8px 30px rgba(40,48,10,.25); }
+  .auth-hero h2 { font-size: 56px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .auth-hero p { margin: 0; font-size: 20px; max-width: 26ch; line-height: 1.35; }
+  .auth-hero .stripe { width: 56px; height: 6px; border-radius: 3px; background: var(--orange); }
+  .auth-main .brand { display: none; }
+}
+
+/* ---------- App-Rahmen ---------- */
+.app {
+  height: 100%; display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "top" "main" "nav";
+}
+.topbar {
+  grid-area: top; display: flex; align-items: center; gap: 10px;
+  min-height: 56px; padding-block: 8px; background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.topbar img { width: 30px; height: 30px; border-radius: 8px; }
+.topbar h1 { font-size: 22px; font-weight: 750; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); margin-left: -8px; }
+.icon-btn svg { width: 24px; height: 24px; }
+.main { grid-area: main; display: flex; min-height: 0; min-width: 0; }
+
+.nav {
+  grid-area: nav; display: grid; grid-template-columns: repeat(var(--tabs, 4), 1fr);
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+.nav-logo { display: none; }
+.nav button {
+  display: grid; justify-items: center; align-content: center; gap: 2px; min-height: var(--nav-h);
+  border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600;
+}
+.nav .ico { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 15px; transition: background .15s ease; }
+.nav svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--ink); }
+.nav button[aria-current="page"] .ico { background: var(--green); color: var(--on-green); }
+
+@media (min-width: 900px) {
+  .app { grid-template-columns: 96px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "nav top" "nav main"; }
+  .nav { grid-template-columns: 1fr !important; grid-auto-rows: min-content; align-content: start; gap: 6px; border-top: 0; border-right: 1px solid var(--line); padding: 16px 0 16px env(safe-area-inset-left, 0px); }
+  .nav-logo { display: grid; place-items: center; padding-bottom: 14px; }
+  .nav-logo img { width: 52px; height: 52px; border-radius: 14px; }
+  .nav button { min-height: 68px; font-size: 13px; }
+  .topbar img { display: none; }
+  .topbar { min-height: 64px; }
+  .topbar h1 { font-size: 26px; }
+}
+
+/* ---------- Bereiche ---------- */
+.pane { flex: 1; min-width: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.split { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.list-pane { flex: 1; min-width: 0; overflow-y: auto; }
+.detail-pane { display: none; }
+@media (min-width: 768px) {
+  .list-pane { flex: 0 0 auto; width: clamp(320px, 40%, 440px); border-right: 1px solid var(--line); }
+  .detail-pane { display: block; flex: 1; min-width: 0; overflow-y: auto; background: var(--surface); }
+}
+.pad { padding-block: 16px 24px; }
+
+.toolbar { display: grid; gap: 10px; padding-block: 12px; background: var(--bg); position: sticky; top: 0; z-index: 3; border-bottom: 1px solid var(--line); }
+.search { position: relative; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--muted); pointer-events: none; }
+.search .input { padding-left: 40px; min-height: 44px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 0 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; min-height: 34px; padding: 0 12px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.group-h {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px;
+  padding-block: 18px 6px; background: var(--bg);
+  font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--green-ink);
+}
+.group-h::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.group-h .count { color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.list-pane .group-h { top: var(--tb-h, 0px); }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+.row {
+  width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+  padding-block: 12px; border: 0; background: transparent; border-bottom: 1px solid var(--line);
+}
+.row:hover { background: var(--surface-2); }
+.row[aria-current="true"] { background: var(--green-soft); }
+.row[aria-current="true"] .row-title { color: var(--ink); }
+.row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.row-title { font-weight: 650; overflow-wrap: anywhere; }
+.row-sub { font-size: 14px; color: var(--muted); }
+.row-meta { flex: none; display: grid; justify-items: end; gap: 5px; text-align: right; }
+.seats { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.seatbar { width: 64px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.seatbar i { display: block; height: 100%; background: var(--green); border-radius: 3px; }
+.seatbar.full i { background: var(--muted); }
+.row-chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+@media (min-width: 768px) { .row-chev { display: none; } }
+.mine-dot { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--orange-soft); color: var(--orange-ink); font-size: 11px; font-weight: 750; letter-spacing: .04em; vertical-align: 2px; }
+
+.avatar { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 750; font-size: 15px; background: var(--surface-2); color: var(--ink); }
+.avatar.me { background: var(--green); color: var(--on-green); }
+.vtag { display: inline-block; min-width: 30px; padding: 1px 6px; border-radius: 6px; background: var(--surface-2); font-size: 12px; font-weight: 750; text-align: center; color: var(--muted); }
+.cid { font-weight: 650; color: var(--ink); }
+.pts-line { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.missing { display: grid; justify-items: end; line-height: 1.1; }
+.missing b { font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; color: var(--orange-ink); }
+.missing span { font-size: 12px; color: var(--muted); }
+.missing.ok b { color: var(--green-ink); }
+
+/* ---------- Detail ---------- */
+.detail { display: grid; gap: 22px; padding-block: 20px 32px; max-width: 720px; }
+@media (min-width: 768px) { .detail { padding-block: 32px 40px; padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); } }
+.eyebrow { font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--green-ink); }
+.detail h2 { font-size: 30px; line-height: 1.12; font-weight: 750; }
+.headline { display: grid; gap: 8px; }
+.scope { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.scope b { font-family: var(--display); font-size: 44px; line-height: 1; font-weight: 800; color: var(--orange-ink); font-variant-numeric: tabular-nums; }
+.scope span { font-size: 18px; color: var(--muted); font-weight: 600; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dots i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--green); }
+.dots i.on { background: var(--green); }
+.dots i.me { background: var(--orange); border-color: var(--orange); }
+.dots-cap { font-size: 14px; color: var(--muted); }
+.props { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; border-top: 1px solid var(--line); }
+.props div { padding: 12px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.props div:nth-child(odd) { padding-right: 12px; }
+.props dt { font-size: 13px; color: var(--muted); font-weight: 600; }
+.props dd { margin: 2px 0 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cta { display: grid; gap: 10px; }
+.cta-note { font-size: 14px; color: var(--muted); text-align: center; margin: 0; }
+.empty { display: grid; place-items: center; align-content: center; gap: 10px; height: 100%; min-height: 240px; color: var(--muted); text-align: center; padding: 24px; }
+.empty svg { width: 40px; height: 40px; color: var(--green-ink); opacity: .7; }
+
+.person { display: flex; align-items: center; gap: 16px; }
+.person .avatar { width: 64px; height: 64px; font-size: 22px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.stat { background: var(--surface-2); border-radius: var(--radius); padding: 14px; display: grid; gap: 2px; min-width: 0; }
+.stat span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.stat b { font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat.orange b { color: var(--orange-ink); }
+.stat.green b { color: var(--green-ink); }
+.meter { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green), var(--green)); }
+.meter-cap { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 6px; }
+
+/* ---------- Punkte ---------- */
+.points { display: grid; gap: 24px; padding-block: 20px 32px; }
+.points-sum { display: grid; gap: 14px; align-content: start; }
+.big-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.big-stat { border-radius: 18px; padding: 16px; display: grid; gap: 4px; }
+.big-stat span { font-size: 14px; font-weight: 650; }
+.big-stat b { font-family: var(--display); font-size: 48px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.big-stat small { font-size: 13px; opacity: .8; }
+.big-stat.committed { background: var(--surface); border: 1.5px solid var(--line); }
+.big-stat.collected { background: var(--green); color: var(--on-green); }
+.section-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.section-h h2 { font-size: 20px; }
+.section-h span { font-size: 14px; color: var(--muted); }
+.check { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+.check-title { font-weight: 650; overflow-wrap: anywhere; }
+.check-pts { font-family: var(--display); font-weight: 800; font-size: 20px; color: var(--green-ink); font-variant-numeric: tabular-nums; text-align: right; }
+.check-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); }
+.check-meta .checker { display: inline-flex; align-items: center; gap: 5px; }
+.check-meta svg { width: 15px; height: 15px; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 6px; background: var(--surface-2); color: var(--ink); font-weight: 650; font-size: 13px; }
+@media (min-width: 900px) {
+  .points { grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 40px; padding-block: 32px; }
+  .points-sum { position: sticky; top: 32px; }
+}
+
+/* ---------- Profil ---------- */
+.profile { display: grid; gap: 24px; padding-block: 20px 32px; max-width: 640px; }
+.profile-card { display: flex; align-items: center; gap: 16px; }
+.profile-card .avatar { width: 64px; height: 64px; font-size: 22px; }
+.profile-card h2 { font-size: 24px; }
+.profile-card p { margin: 0; color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.two { display: grid; gap: 16px; }
+@media (min-width: 600px) { .two { grid-template-columns: 1fr 1fr; } }
+.profile-actions { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (min-width: 900px) { .profile { padding-block: 32px; margin-inline: auto; } }
+
+/* ---------- Level ---------- */
+.year { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.year b { font-family: var(--display); font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.year span { font-size: 13px; color: var(--muted); text-align: right; max-width: 22ch; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.trio .big-stat { padding: 14px 12px; }
+.trio .big-stat b { font-size: 34px; }
+.big-stat.sum { background: var(--ink); color: var(--bg); }
+.level { display: grid; gap: 12px; border: 1.5px solid var(--line); border-radius: 18px; padding: 16px; background: var(--surface); }
+.level-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.level-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; font-family: var(--display); font-weight: 800; font-size: 20px; }
+.level-badge svg { width: 26px; height: 26px; }
+.lv-gast { background: var(--surface-2); color: var(--muted); }
+.lv-mitglied { background: var(--green-soft); color: var(--green-ink); }
+.lv-silber { background: var(--silver-soft); color: var(--silver); }
+.lv-gold { background: var(--gold-soft); color: var(--gold); }
+.level-next { font-weight: 650; font-size: 15px; }
+.track { position: relative; height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.track i { position: absolute; inset: 0 auto 0 0; background: var(--orange); border-radius: 6px; }
+.track s { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--surface); }
+.track-labels { position: relative; height: 32px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.track-labels span { position: absolute; top: 4px; transform: translateX(-50%); text-align: center; line-height: 1.2; white-space: nowrap; }
+.track-labels span:first-child { transform: none; text-align: left; }
+.track-labels b { display: block; color: var(--ink); font-weight: 650; }
+
+/* ---------- Rollen & Status ---------- */
+.roles { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.role { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.role-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.role-text b { font-weight: 650; }
+.role-text small { color: var(--muted); font-size: 13px; }
+.switch { position: relative; flex: none; width: 52px; height: 32px; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 16px; background: var(--line); transition: background .15s ease; pointer-events: none; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease; }
+.switch input:checked + span { background: var(--green); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:disabled { cursor: not-allowed; }
+.switch input:disabled + span { opacity: .55; }
+.switch input:focus-visible + span { outline: 3px solid var(--orange); outline-offset: 2px; }
+.inactive-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .04em; vertical-align: 2px; }
+.row.inactive .row-title, .row.inactive .avatar, .row.inactive .missing { opacity: .55; }
+.status-box { display: grid; gap: 10px; }
+.confirm { display: grid; gap: 10px; background: var(--orange-soft); color: var(--orange-ink); padding: 12px 14px; border-radius: 12px; font-weight: 600; font-size: 14px; }
+.confirm div { display: flex; gap: 8px; flex-wrap: wrap; }
+.h3 { font-size: 17px; font-weight: 750; }
+
+/* ---------- Bearbeiten ---------- */
+.detail-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.btn-sm { min-height: 40px; padding: 0 14px; font-size: 15px; }
+.edit-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.edit-actions .btn { flex: 1 1 140px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+/* ---------- Erledigt melden & Checks ---------- */
+.status { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; font-size: 14px; }
+.status b { font-size: 15px; }
+.status.ok { background: var(--green-soft); color: var(--green-ink); }
+.status.wait { background: var(--surface-2); color: var(--ink); }
+.status.no { background: var(--orange-soft); color: var(--orange-ink); }
+.status blockquote { margin: 2px 0 0; padding: 8px 10px; border-left: 3px solid currentColor; background: var(--surface); color: var(--ink); border-radius: 0 8px 8px 0; font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mine-dot.wait { background: var(--surface-2); color: var(--ink); }
+.mine-dot.no { background: var(--orange); color: var(--on-orange); }
+.chip-sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
+.nav .ico { position: relative; }
+.nav .count-badge { position: absolute; top: -4px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--orange); color: var(--on-orange); font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.checks { display: grid; gap: 16px; padding-block: 20px 32px; }
+.checks-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.checks-head h2 { font-size: 20px; }
+.checks-head span { color: var(--muted); font-size: 14px; }
+.reports { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; list-style: none; margin: 0; padding: 0; }
+.report { display: grid; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 14px; min-width: 0; }
+.report-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.report-head b { font-weight: 700; overflow-wrap: anywhere; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.report-actions .btn { flex: 1 1 120px; min-height: 44px; }
+.textarea { width: 100%; min-height: 84px; padding: 10px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font: inherit; font-size: 16px; resize: vertical; }
+.textarea:focus { outline: none; border-color: var(--green-ink); box-shadow: 0 0 0 3px var(--green-soft); }
+.btn-reject { background: var(--orange-soft); color: var(--orange-ink); }
+.inline-form { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+.inline-form .input { flex: 1 1 170px; width: auto; }
+.inline-form .btn { flex: none; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px); z-index: 50;
+  display: flex; align-items: center; gap: 14px; width: max-content; max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 12px; box-shadow: var(--shadow);
+  font-weight: 600; font-size: 15px; animation: rise .2s ease;
+}
+.toast button { background: none; border: 0; color: var(--green); font-weight: 750; padding: 4px; }
+@media (min-width: 900px) { .toast { bottom: 24px; left: calc(50% + 48px); } }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Im installierten Modus (PWA) die Ränder des iPhones selbst freihalten */
+.pwa .topbar { padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+.pwa .nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pwa .auth-main { padding-top: max(32px, env(safe-area-inset-top, 0px)); padding-bottom: max(32px, env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 900px) { .pwa .nav { padding-top: max(16px, env(safe-area-inset-top, 0px)); } }
+</style>
+
+<div id="root"></div>
+<div id="toast-host" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Chora – Konfiguration
+   Die WorkOS Client-ID ist öffentlich und darf in der App stehen.
+   Der WorkOS API-Key (sk_…) darf NIE in die App: er gehört in das Backend,
+   das unter apiBase erreichbar ist (siehe README.md).
+   ===================================================================== */
+const CONFIG = {
+  workosClientId: "client_01M6S2ZW881YDJD8N354B1DBH0",
+  workosOrganizationId: "org_01M6S2ZW2DBGNYK21HN4N9VVNJ",
+  supabaseUrl: "https://fquqkyvthizbwkxzlgpf.supabase.co",
+  supabaseKey: "sb_publishable_ALUOAZw0BBbiRpaeoQ1Dqg_TCm_V36k",   // öffentlicher Schlüssel
+  // Vorschau und ?demo = Beispieldaten im Browser, installierte App = echte Daten
+  mock: !window.CHORA_PWA || new URLSearchParams(location.search).has("demo")
+};
+
+const LOGO = "icons/icon-192.png";
+
+/* ---------- Stammdaten ---------- */
+const VOICES = [
+  { key: "B", label: "Bass" }, { key: "T", label: "Tenor" },
+  { key: "A1", label: "Alt 1" }, { key: "A2", label: "Alt 2" },
+  { key: "S1", label: "Sopran 1" }, { key: "S2", label: "Sopran 2" },
+  { key: "U", label: "unbekannt" }
+];
+const voiceLabel = k => (VOICES.find(v => v.key === k) || VOICES[6]).label;
+const INTERVALS = { M: "Monat", Q: "Quartal", J: "Jahr", J3: "3 Jahre" };
+const CATEGORY_ORDER = ["Proben", "Noten & Archiv", "Konzerte", "Organisation", "Öffentlichkeitsarbeit", "Gemeinschaft", "Finanzen"];
+const CHOR_ID_RE = /^(B|T|A1|A2|S1|S2)-\p{L}+(?:-\p{L}+)*$/u;
+/* Rollen-Slugs wie in WorkOS angelegt */
+const ROLES = [
+  { key: "mitgliedsverwalter", label: "Mitgliedsverwalter", hint: "Sieht alle Angaben, aktiviert Mitglieder, vergibt Rollen" },
+  { key: "aufgabenverwalter", label: "Aufgabenverwalter", hint: "Bearbeitet Aufgaben" },
+  { key: "aufgabenchecker", label: "Aufgabenchecker", hint: "Bestätigt erledigte Aufgaben" }
+];
+const LEVELS = [
+  { name: "Gast", min: 0, cls: "gast" }, { name: "Mitglied", min: 20, cls: "mitglied" },
+  { name: "Silber", min: 30, cls: "silber" }, { name: "Gold", min: 40, cls: "gold" }
+];
+function levelOf(sum) {
+  let i = LEVELS.length - 1;
+  while (i > 0 && sum < LEVELS[i].min) i--;
+  const next = LEVELS[i + 1];
+  return { ...LEVELS[i], next, need: next ? next.min - sum : 0 };
+}
+const P = n => `${n}p`;   // virtuelle Währung
+
+/* ---------- Beispieldaten ---------- */
+function seed() {
+  const t = (id, title, cat, iv, pts, total, taken, from, to) =>
+    ({ id, title, category: cat, interval: iv, points: pts, total, assigned: taken, validFrom: from, validTo: to });
+  const tasks = [
+    t("t01", "Einsingen anleiten", "Proben", "M", 6, 4, 2, "2026-01-01", "2027-12-31"),
+    t("t02", "Stimmprobe leiten", "Proben", "M", 12, 6, 3, "2026-01-01", "2027-12-31"),
+    t("t03", "Probenraum auf- und abschließen", "Proben", "M", 4, 4, 4, "2026-01-01", "2027-12-31"),
+    t("t04", "Stühle und Klavier aufbauen", "Proben", "M", 3, 8, 5, "2026-01-01", "2027-12-31"),
+    t("t05", "Notenwart", "Noten & Archiv", "J", 30, 2, 1, "2026-01-01", "2028-12-31"),
+    t("t06", "Noten kopieren und verteilen", "Noten & Archiv", "Q", 8, 3, 1, "2026-01-01", "2027-12-31"),
+    t("t07", "Notenarchiv digitalisieren", "Noten & Archiv", "J3", 40, 2, 1, "2026-01-01", "2028-12-31"),
+    t("t08", "Bühnenaufbau beim Konzert", "Konzerte", "Q", 10, 10, 6, "2026-01-01", "2027-12-31"),
+    t("t09", "Abendkasse", "Konzerte", "Q", 8, 4, 2, "2026-01-01", "2027-12-31"),
+    t("t10", "Plakate aufhängen", "Konzerte", "Q", 5, 6, 3, "2026-01-01", "2027-12-31"),
+    t("t11", "Getränkeverkauf in der Pause", "Konzerte", "Q", 6, 5, 5, "2026-01-01", "2027-12-31"),
+    t("t12", "Anwesenheitsliste führen", "Organisation", "Q", 8, 2, 1, "2026-01-01", "2027-12-31"),
+    t("t13", "Protokoll der Mitgliederversammlung", "Organisation", "J", 10, 1, 1, "2026-01-01", "2027-12-31"),
+    t("t14", "Raumbuchung für Konzerte", "Organisation", "J", 15, 2, 1, "2026-01-01", "2026-12-31"),
+    t("t15", "Social-Media-Beiträge", "Öffentlichkeitsarbeit", "Q", 15, 3, 2, "2026-01-01", "2027-12-31"),
+    t("t16", "Website pflegen", "Öffentlichkeitsarbeit", "J", 20, 1, 1, "2026-01-01", "2027-12-31"),
+    t("t17", "Pressetext zum Konzert", "Öffentlichkeitsarbeit", "Q", 10, 2, 1, "2026-01-01", "2027-12-31"),
+    t("t18", "Kuchen für die Probenpause", "Gemeinschaft", "M", 3, 12, 7, "2026-01-01", "2027-12-31"),
+    t("t19", "Geburtstagskarten schreiben", "Gemeinschaft", "Q", 5, 2, 1, "2026-01-01", "2027-12-31"),
+    t("t20", "Sommerfest organisieren", "Gemeinschaft", "J", 25, 4, 2, "2027-01-01", "2027-09-30"),
+    t("t21", "Kassenprüfung", "Finanzen", "J", 20, 2, 2, "2026-01-01", "2027-12-31"),
+    t("t22", "Mitgliedsbeiträge verwalten", "Finanzen", "J3", 45, 1, 1, "2026-01-01", "2028-12-31")
+  ];
+  const m = (first, last, voice, chorId, committed, collected, roles = [], active = true) =>
+    ({ id: "m-" + (chorId || first + last), firstName: first, lastName: last, voice, chorId, committed, collected, roles, active });
+  const members = [
+    m("Anna", "Becker", "S1", "S1-Anna", 40, 28), m("Sophie", "Wagner", "S1", "S1-Sophie", 25, 25),
+    m("Clara", "Neumann", "S2", "S2-Clara", 36, 12), m("Marie", "Krüger", "S2", "S2-Marie-Luise", 18, 18),
+    m("Johanna", "Schulz", "A1", "A1-Johanna", 30, 21), m("Katrin", "Hoffmann", "A2", "A2-Katrin", 45, 30, ["aufgabenverwalter"]),
+    m("Ute", "Lehmann", "A2", "A2-Ute", 20, 8, [], false), m("Jonas", "Fischer", "T", "T-Jonas", 32, 32, ["aufgabenchecker"]),
+    m("Paul", "Richter", "T", "T-Paul", 22, 10), m("Felix", "Wolf", "T", "T-Felix", 15, 3),
+    m("Thomas", "Braun", "B", "B-Thomas", 50, 41, ["mitgliedsverwalter", "aufgabenchecker"]), m("Martin", "Zimmermann", "B", "B-Martin", 28, 20),
+    m("Stefan", "Hartmann", "B", "B-Stefan", 12, 0, [], false), m("Elena", "Schröder", "U", "", 10, 4)
+  ];
+  const since = {
+    "S1-Anna": "2015-09-01", "S1-Sophie": "2021-03-15", "S2-Clara": "2019-01-10", "S2-Marie-Luise": "2023-09-05",
+    "A1-Johanna": "2012-04-20", "A2-Katrin": "2008-10-01", "A2-Ute": "2017-02-01", "T-Jonas": "2018-06-12",
+    "T-Paul": "2022-01-17", "T-Felix": "2025-09-01", "B-Thomas": "2005-01-15", "B-Martin": "2016-11-07", "B-Stefan": "2020-03-02"
+  };
+  members.forEach(x => { x.since = since[x.chorId] || "2024-05-06"; });
+  // Als erledigt gemeldete Aufgaben (status: reported | rejected)
+  const reports = [
+    { id: "r1", by: "m-S1-Anna", taskId: "t18", date: "2026-11-03", status: "reported" },
+    { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported" },
+    { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported" }
+  ];
+  return { v: 3, tasks, members, reports, users: {}, session: null, ui: {} };
+}
+function demoUsers() {
+  return {
+    admin: {
+      id: "u-demo", email: "demo@chora.app", verified: true, active: true, roles: ROLES.map(r => r.key), memberSince: "2014-09-01",
+      reports: [{ taskId: "t19", date: "2026-11-04", status: "reported" }],
+      profile: { firstName: "Lea", lastName: "Sommer", voice: "A1", chorId: "A1-Lea" },
+      claims: ["t18", "t01", "t19"],
+      checks: [
+        { taskId: "t18", date: "2026-10-28", points: 3, checker: "A2-Katrin" },
+        { taskId: "t01", date: "2026-10-14", points: 6, checker: "B-Thomas" },
+        { taskId: "t18", date: "2026-09-09", points: 3, checker: "S1-Anna" }
+      ]
+    },
+    member: {
+      id: "u-demo2", email: "jan@chora.app", verified: true, active: true, roles: [], memberSince: "2024-01-08",
+      reports: [{ taskId: "t08", date: "2026-11-02", status: "rejected", checker: "B-Thomas", decidedAt: "2026-11-04",
+        comment: "Beim Aufbau am 1. November warst du nicht auf der Liste. Meld dich bitte kurz bei mir, dann klären wir das." }],
+      profile: { firstName: "Jan", lastName: "Weber", voice: "T", chorId: "T-Jan" },
+      claims: ["t08", "t10"],
+      checks: [
+        { taskId: "t10", date: "2026-10-02", points: 5, checker: "B-Thomas" },
+        { taskId: "t08", date: "2026-09-20", points: 10, checker: "T-Jonas" }
+      ]
+    }
+  };
+}
+
+/* ---------- Speicher (lokal, ausfallsicher) ---------- */
+const KEY = "chora.v3";
+let DB;
+function loadDB() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 3) return d; } } catch (e) {}
+  return seed();
+}
+function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
+DB = loadDB();
+
+/* =====================================================================
+   API-Schicht. Im Mock-Modus wird alles lokal simuliert.
+   Später ersetzt jede Methode ihren Mock-Teil durch einen fetch() an
+   CONFIG.apiBase – die Oberfläche bleibt unverändert.
+   ===================================================================== */
+const wait = (ms = 280) => new Promise(r => setTimeout(r, ms));
+class ApiError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+async function sha(s) {
+  try {
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+  } catch (e) { let h = 0; for (const c of s) h = (h * 31 + c.codePointAt(0)) | 0; return "f" + h; }
+}
+const norm = e => String(e || "").trim().toLowerCase();
+const me = () => CONFIG.mock ? (DB.session && DB.users[DB.session]) : CACHE.me;
+/* Rollen kommen später aus der WorkOS-Session (organization membership → roles) */
+const myKey = () => DB.session ? "u:" + DB.session : "";
+function reporterOf(by) {
+  if (by.startsWith("u:")) { const u = DB.users[by.slice(2)]; return { chorId: u && u.profile ? u.profile.chorId : "", voice: u && u.profile ? u.profile.voice : "U" }; }
+  const m = DB.members.find(x => x.id === by); return { chorId: m ? m.chorId : "", voice: m ? m.voice : "U" };
+}
+function checkable(id) {
+  if (!can("aufgabenchecker")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Aufgabenchecker.");
+  const r = DB.reports.find(x => x.id === id && x.status === "reported");
+  if (!r) throw new ApiError("gone", "Diese Meldung wurde schon bearbeitet oder zurückgenommen.");
+  if (r.by === myKey()) throw new ApiError("own", "Eigene Meldungen bestätigt ein anderer Aufgabenchecker.");
+  if (!me().profile.chorId) throw new ApiError("chorId", "Für Checks brauchst du eine Chor-ID. Trag sie im Profil ein.");
+  return r;
+}
+const can = role => { const u = me(); return !!(u && Array.isArray(u.roles) && u.roles.includes(role)); };
+
+const Api = {
+  // POST {apiBase}/auth/register  → Backend: WorkOS createUser + Verifizierungscode senden
+  async register(email, password) {
+    await wait();
+    email = norm(email);
+    if (DB.users[email]) throw new ApiError("exists", "Für diese Adresse gibt es schon ein Konto. Melde dich an.");
+    DB.users[email] = { id: "u-" + Date.now().toString(36), email, pw: await sha(password), verified: false, active: true, roles: [], memberSince: todayISO(), profile: null, claims: [], checks: [] };
+    saveDB();
+    return { status: "verification_required" };
+  },
+  // POST {apiBase}/auth/verify  → Backend: WorkOS authenticate (grant_type email-verification:code)
+  async verify(email, code) {
+    await wait();
+    const u = DB.users[norm(email)];
+    if (!u) throw new ApiError("unknown", "Dieses Konto gibt es nicht mehr. Bitte registriere dich erneut.");
+    if (!/^\d{6}$/.test(code)) throw new ApiError("code", "Der Code hat 6 Ziffern. Bitte prüfe deine Eingabe.");
+    u.verified = true; DB.session = u.email; saveDB();
+    return u;
+  },
+  // POST {apiBase}/auth/resend → Backend: WorkOS sendVerificationEmail
+  async resend(email) { await wait(); return true; },
+  // POST {apiBase}/auth/login → Backend: WorkOS authenticateWithPassword
+  async login(email, password) {
+    await wait();
+    const u = DB.users[norm(email)];
+    if (!u || (u.pw && u.pw !== await sha(password))) throw new ApiError("credentials", "E-Mail-Adresse oder Passwort stimmt nicht.");
+    if (!u.verified) throw new ApiError("unverified", "Bitte bestätige zuerst deine E-Mail-Adresse.");
+    DB.session = u.email; saveDB();
+    return u;
+  },
+  async loginDemo(kind) {
+    await wait(150);
+    const d = demoUsers()[kind];
+    if (!DB.users[d.email]) {
+      DB.users[d.email] = d;
+      d.claims.forEach(id => { const t = DB.tasks.find(x => x.id === id); if (t && t.assigned < t.total) t.assigned++; });
+      (d.reports || []).forEach((r, i) => DB.reports.push({ id: "r-" + kind + i, by: "u:" + d.email, ...r }));
+      delete d.reports;
+    }
+    DB.session = d.email; saveDB();
+    return DB.users[d.email];
+  },
+  async logout() { DB.session = null; saveDB(); },
+  // PUT {apiBase}/me/profile
+  async saveProfile(p) {
+    await wait();
+    const u = me();
+    if (p.chorId) {
+      const taken = DB.members.some(m => m.chorId.toLowerCase() === p.chorId.toLowerCase())
+        || Object.values(DB.users).some(o => o !== u && o.profile && (o.profile.chorId || "").toLowerCase() === p.chorId.toLowerCase());
+      if (taken) throw new ApiError("chorId", "Diese Chor-ID ist schon vergeben. Bitte wähle einen anderen Namen.");
+    }
+    u.profile = { ...p }; saveDB();
+    return u.profile;
+  },
+  // GET {apiBase}/tasks
+  async tasks() { return DB.tasks; },
+  // PUT {apiBase}/tasks/:id – nur Rolle aufgabenverwalter (prüft das Backend)
+  async updateTask(id, data) {
+    await wait();
+    if (!can("aufgabenverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Aufgabenverwalter.");
+    const t = DB.tasks.find(x => x.id === id);
+    Object.assign(t, data); saveDB();
+    return t;
+  },
+  async createTask(data) {
+    await wait();
+    if (!can("aufgabenverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Aufgabenverwalter.");
+    const t = { id: "t" + Date.now().toString(36), assigned: 0, ...data };
+    DB.tasks.push(t); saveDB();
+    return t.id;
+  },
+  // POST {apiBase}/tasks/:id/claim
+  async claim(id) {
+    await wait();
+    const u = me(), t = DB.tasks.find(x => x.id === id);
+    if (u.claims.includes(id)) throw new ApiError("dup", "Du hast diese Aufgabe schon übernommen.");
+    if (t.assigned >= t.total) throw new ApiError("full", "Alle Plätze dieser Aufgabe sind schon vergeben.");
+    t.assigned++; u.claims.push(id); saveDB();
+  },
+  async unclaim(id) {
+    await wait(120);
+    const u = me(), t = DB.tasks.find(x => x.id === id);
+    DB.reports = DB.reports.filter(r => !(r.by === myKey() && r.taskId === id));
+    u.claims = u.claims.filter(x => x !== id); t.assigned = Math.max(0, t.assigned - 1); saveDB();
+  },
+  // Eigene Meldung zu einer übernommenen Aufgabe
+  myReport(taskId) { return DB.reports.find(r => r.by === myKey() && r.taskId === taskId); },
+  // POST {apiBase}/tasks/:id/done
+  async markDone(taskId) {
+    await wait();
+    const u = me();
+    if (!u.claims.includes(taskId)) throw new ApiError("claim", "Du hast diese Aufgabe nicht übernommen.");
+    const r = Api.myReport(taskId);
+    if (r) { r.status = "reported"; r.date = todayISO(); delete r.comment; delete r.checker; delete r.decidedAt; }
+    else DB.reports.push({ id: "r" + Date.now().toString(36), by: myKey(), taskId, date: todayISO(), status: "reported" });
+    saveDB();
+  },
+  // DELETE {apiBase}/tasks/:id/done
+  async undoDone(taskId) {
+    await wait(150);
+    DB.reports = DB.reports.filter(r => !(r.by === myKey() && r.taskId === taskId && r.status === "reported"));
+    saveDB();
+  },
+  // GET {apiBase}/checks – nur Rolle aufgabenchecker
+  pendingReports() {
+    if (!can("aufgabenchecker")) return [];
+    return DB.reports.filter(r => r.status === "reported").sort((a, b) => a.date.localeCompare(b.date))
+      .map(r => ({ ...r, task: DB.tasks.find(t => t.id === r.taskId), reporter: reporterOf(r.by), own: r.by === myKey() }));
+  },
+  // POST {apiBase}/checks/:id/confirm
+  async confirmReport(id) {
+    await wait();
+    const r = checkable(id), t = DB.tasks.find(x => x.id === r.taskId);
+    if (r.by.startsWith("u:")) DB.users[r.by.slice(2)].checks.push({ taskId: t.id, date: todayISO(), points: t.points, checker: me().profile.chorId });
+    else { const m = DB.members.find(x => x.id === r.by); if (m) m.collected += t.points; }
+    DB.reports = DB.reports.filter(x => x !== r); saveDB();
+  },
+  // POST {apiBase}/checks/:id/reject {comment}
+  async rejectReport(id, comment) {
+    await wait();
+    const r = checkable(id);
+    r.status = "rejected"; r.comment = comment || ""; r.checker = me().profile.chorId; r.decidedAt = todayISO(); saveDB();
+  },
+  // PUT {apiBase}/members/:id/since – nur Rolle mitgliedsverwalter
+  async setSince(id, date) {
+    await wait();
+    if (!can("mitgliedsverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Mitgliedsverwalter.");
+    if (id === "me") me().memberSince = date; else DB.members.find(m => m.id === id).since = date;
+    saveDB();
+  },
+  // GET {apiBase}/me/points
+  pointsOf(u) {
+    const committed = u.claims.reduce((s, id) => s + ((DB.tasks.find(t => t.id === id) || {}).points || 0), 0);
+    const collected = u.checks.reduce((s, c) => s + c.points, 0);
+    return { committed, collected, missing: Math.max(0, committed - collected) };
+  },
+  // GET {apiBase}/members – das Backend liefert Namen, Punkte, Rollen und
+  // inaktive Mitglieder nur an Mitgliedsverwalter aus.
+  members() {
+    const u = me(), admin = can("mitgliedsverwalter");
+    const list = DB.members.map(m => ({ ...m, missing: Math.max(0, m.committed - m.collected) }));
+    if (u && u.profile) {
+      const p = Api.pointsOf(u);
+      list.push({ id: "me", me: true, ...u.profile, committed: p.committed, collected: p.collected, missing: p.missing, roles: [...(u.roles || [])], active: u.active !== false, since: u.memberSince || todayISO() });
+    }
+    if (admin) return list.sort((a, b) => (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName, "de"));
+    return list.filter(m => m.active)
+      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice }))
+      .sort((a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de"));
+  },
+  // PUT {apiBase}/members/:id/active → Backend: WorkOS deactivate/reactivate organization membership
+  async setActive(id, active) {
+    await wait();
+    if (!can("mitgliedsverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Mitgliedsverwalter.");
+    if (id === "me") throw new ApiError("self", "Du kannst dich nicht selbst deaktivieren.");
+    DB.members.find(m => m.id === id).active = active; saveDB();
+  },
+  // PUT {apiBase}/members/:id/roles → Backend: WorkOS update organization membership (role_slugs)
+  async setRole(id, role, on) {
+    await wait(150);
+    if (!can("mitgliedsverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Mitgliedsverwalter.");
+    if (id === "me" && role === "mitgliedsverwalter" && !on) throw new ApiError("self", "Die Rolle Mitgliedsverwalter kannst du dir nicht selbst wegnehmen.");
+    const target = id === "me" ? me() : DB.members.find(m => m.id === id);
+    const set = new Set(target.roles || []);
+    on ? set.add(role) : set.delete(role);
+    target.roles = ROLES.map(r => r.key).filter(k => set.has(k)); saveDB();
+  }
+};
+
+/* =====================================================================
+   Echte Daten: Supabase (Datenbank) + Edge Functions (WorkOS-Anmeldung)
+   ===================================================================== */
+const CACHE = { me: null, reports: {}, lastCheck: {}, points: null, members: [], pending: [] };
+function isoLocal(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+function jwtPayload(t) {
+  try { return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); } catch (e) { return {}; }
+}
+const Remote = {
+  at: null, rt: null, exp: 0,
+  loadSession() { try { this.rt = localStorage.getItem("chora.rt"); } catch (e) {} return !!this.rt; },
+  setTokens(t) {
+    this.at = t.accessToken; this.rt = t.refreshToken; this.exp = jwtPayload(t.accessToken).exp || 0;
+    try { localStorage.setItem("chora.rt", this.rt); } catch (e) {}
+  },
+  clear() { this.at = this.rt = null; this.exp = 0; try { localStorage.removeItem("chora.rt"); } catch (e) {} },
+  async call(url, opts) {
+    try { return await fetch(url, opts); }
+    catch (e) { throw new ApiError("offline", "Keine Verbindung zum Server. Prüfe deine Internetverbindung."); }
+  },
+  async fn(name, body, auth = false) {
+    const headers = { "Content-Type": "application/json", apikey: CONFIG.supabaseKey };
+    if (auth) headers.Authorization = "Bearer " + await this.token();
+    const res = await this.call(`${CONFIG.supabaseUrl}/functions/v1/${name}`, { method: "POST", headers, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 401 && data.error === "session") this.sessionLost();
+      throw new ApiError(data.error || "server", data.message || "Der Server antwortet gerade nicht. Bitte versuch es später noch einmal.");
+    }
+    return data;
+  },
+  async token(force = false) {
+    if (!force && this.at && Date.now() / 1000 < this.exp - 60) return this.at;
+    if (!this.rt) { this.sessionLost(); throw new ApiError("session", "Bitte melde dich neu an."); }
+    const t = await this.fn("chora-auth", { action: "refresh", refreshToken: this.rt });
+    this.setTokens(t);
+    return this.at;
+  },
+  async rest(path, method = "POST", body, prefer) {
+    const headers = { apikey: CONFIG.supabaseKey, Authorization: "Bearer " + await this.token(), "Content-Type": "application/json" };
+    if (prefer) headers.Prefer = prefer;
+    const res = await this.call(`${CONFIG.supabaseUrl}/rest/v1/${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const text = await res.text();
+    let data = null; try { data = text ? JSON.parse(text) : null; } catch (e) {}
+    if (!res.ok) {
+      if (res.status === 401) { this.sessionLost(); throw new ApiError("session", "Deine Sitzung ist abgelaufen. Bitte melde dich neu an."); }
+      const msg = data && data.message ? String(data.message) : "";
+      const ours = data && ["P0001", "P0002", "22023", "23505", "42501"].includes(data.code) && !/row-level security/i.test(msg);
+      throw new ApiError(data && data.code || "db", ours ? msg : /row-level security/i.test(msg)
+        ? "Dafür fehlen dir die Rechte." : "Das hat nicht geklappt. Bitte versuch es noch einmal.");
+    }
+    return data;
+  },
+  rpc(name, args = {}) { return this.rest("rpc/" + name, "POST", args); },
+  sessionLost() {
+    this.clear(); CACHE.me = null;
+    if (S && S.screen !== "login") setTimeout(() => go({ screen: "login", authMode: "login", error: "Bitte melde dich neu an." }), 0);
+  }
+};
+async function reload() {
+  const m = await Remote.rpc("get_me");
+  if (!m) { CACHE.me = { profile: null, roles: [], claims: [], checks: [], email: S.email }; DB.tasks = []; return; }
+  const roles = m.roles || [];
+  const [tasks, points, checks, members, pending] = await Promise.all([
+    Remote.rpc("task_list"), Remote.rpc("my_points"), Remote.rpc("my_checks"), Remote.rpc("member_list"),
+    roles.includes("aufgabenchecker") ? Remote.rpc("pending_reports") : Promise.resolve([])
+  ]);
+  DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, category: t.category, interval: t.period, points: t.points,
+    total: t.total, assigned: t.assigned, validFrom: t.valid_from, validTo: t.valid_to }));
+  CACHE.reports = {}; CACHE.lastCheck = {};
+  (tasks || []).forEach(t => {
+    if (t.report_status) CACHE.reports[t.id] = { status: t.report_status, date: isoLocal(t.reported_at), comment: t.report_comment || "",
+      checker: t.report_checker || "", decidedAt: isoLocal(t.decided_at) };
+    if (t.last_checked_on) CACHE.lastCheck[t.id] = { date: t.last_checked_on, checker: t.last_checker || "" };
+  });
+  CACHE.points = points;
+  CACHE.members = (members || []).map(x => ({ ...x, voice: x.voice || "U", chorId: x.chorId || "", roles: x.roles || [] }));
+  CACHE.pending = (pending || []).map(r => ({ id: r.id, date: isoLocal(r.reported_at), task: { title: r.task_title, points: r.points },
+    reporter: { chorId: r.reporter_chor_id || "", voice: r.reporter_voice || "U" }, own: r.own }));
+  CACHE.me = {
+    id: m.id, email: m.email || S.email, roles, active: m.active, memberSince: m.memberSince,
+    profile: { firstName: m.firstName, lastName: m.lastName, voice: m.voice, chorId: m.chorId || "" },
+    claims: (tasks || []).filter(t => t.mine).map(t => t.id),
+    checks: (checks || []).map(c => ({ taskId: c.task_id, title: c.task_title, date: c.checked_on, points: c.points, checker: c.checker_chor_id || "" }))
+  };
+}
+const taskRow2db = d => ({ title: d.title, category: d.category, period: d.interval, points: d.points, total: d.total,
+  valid_from: d.validFrom, valid_to: d.validTo });
+async function afterAuth(r, email, password) {
+  if (r.status === "verification_required") {
+    S.pending = { token: r.pendingToken, email, password };
+    return { status: "verification_required" };
+  }
+  Remote.setTokens(r); S.pending = null;
+  await reload();
+  return { status: "ok" };
+}
+const RealApi = {
+  async register(email, password) { return afterAuth(await Remote.fn("chora-auth", { action: "register", email, password }), email, password); },
+  async login(email, password) {
+    const res = await afterAuth(await Remote.fn("chora-auth", { action: "login", email, password }), email, password);
+    if (res.status === "verification_required") throw new ApiError("unverified", "Bitte bestätige zuerst deine E-Mail-Adresse.");
+    return res;
+  },
+  async verify(email, code) {
+    if (!S.pending) throw new ApiError("expired", "Die Bestätigung ist abgelaufen. Bitte melde dich noch einmal an.");
+    return afterAuth(await Remote.fn("chora-auth", { action: "verify", code, pendingToken: S.pending.token }), email, S.pending.password);
+  },
+  async resend(email) {
+    if (!S.pending || !S.pending.password) throw new ApiError("expired", "Bitte melde dich noch einmal an, dann schicken wir einen neuen Code.");
+    const r = await Remote.fn("chora-auth", { action: "login", email, password: S.pending.password });
+    if (r.status === "verification_required") S.pending.token = r.pendingToken;
+    else { Remote.setTokens(r); S.pending = null; await reload(); }
+  },
+  async logout() { Remote.clear(); CACHE.me = null; S.pending = null; },
+  async saveProfile(p) {
+    try { await Remote.rpc("save_profile", { p_first_name: p.firstName, p_last_name: p.lastName, p_voice: p.voice, p_chor_id: p.chorId || null }); }
+    catch (e) { if (/Chor-ID/.test(e.message)) throw new ApiError("chorId", e.message); throw e; }
+    await reload();
+  },
+  async updateTask(id, d) {
+    const rows = await Remote.rest(`tasks?id=eq.${encodeURIComponent(id)}`, "PATCH", { ...taskRow2db(d), updated_at: new Date().toISOString() }, "return=representation");
+    if (!rows || !rows.length) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Aufgabenverwalter.");
+    await reload();
+  },
+  async createTask(d) {
+    const rows = await Remote.rest("tasks", "POST", taskRow2db(d), "return=representation");
+    await reload();
+    return rows && rows[0] ? rows[0].id : null;
+  },
+  async claim(id) { await Remote.rpc("claim_task", { p_task: id }); await reload(); },
+  async unclaim(id) { await Remote.rpc("unclaim_task", { p_task: id }); await reload(); },
+  async markDone(id) { await Remote.rpc("report_done", { p_task: id }); await reload(); },
+  async undoDone(id) { await Remote.rpc("withdraw_report", { p_task: id }); await reload(); },
+  async confirmReport(id) { await Remote.rpc("confirm_report", { p_report: id }); await reload(); },
+  async rejectReport(id, comment) { await Remote.rpc("reject_report", { p_report: id, p_comment: comment || null }); await reload(); },
+  async setSince(id, date) { await Remote.rpc("set_member_since", { p_member: id, p_since: date }); await reload(); },
+  async setActive(id, active) { await Remote.fn("chora-admin", { action: "setActive", memberId: id, active }, true); await reload(); },
+  async setRole(id, role, on) {
+    await Remote.fn("chora-admin", { action: "setRole", memberId: id, role, on }, true);
+    if (CACHE.me && id === CACHE.me.id) await Remote.token(true);   // eigene Rollen sofort ins Token holen
+    await reload();
+  },
+  myReport(taskId) { return CACHE.reports[taskId]; },
+  pendingReports() { return CACHE.pending; },
+  members() { return CACHE.members; },
+  pointsOf() {
+    const p = CACHE.points || { collected: 0, committed: 0 };
+    return { committed: p.committed, collected: p.collected, missing: Math.max(0, p.committed - p.collected) };
+  }
+};
+if (!CONFIG.mock) Object.assign(Api, RealApi);
+function lastCheckFor(taskId) {
+  if (!CONFIG.mock) return CACHE.lastCheck[taskId];
+  return [...me().checks].filter(c => c.taskId === taskId).sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+
+/* ---------- Helfer ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtDate = iso => { const [y, m, d] = iso.split("-"); return `${d}.${m}.${y}`; };
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const initials = p => ((p.firstName || "?")[0] + (p.lastName || "")[0]).toUpperCase();
+const scopeText = t => `${P(t.points)} pro ${INTERVALS[t.interval]}`;
+const wide = () => matchMedia("(min-width: 768px)").matches;
+const $ = s => document.querySelector(s);
+
+const I = {
+  tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m9 11 1.6 1.6L14 9.5"/><path d="M9 16.5h6"/></svg>',
+  points: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
+  members: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="7" r="2.6"/><path d="M17.5 12.6c2.2.3 3.6 1.9 4 4.6"/></svg>',
+  profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.3"/><path d="M6.2 18.6c1.3-2.2 3.3-3.3 5.8-3.3s4.5 1.1 5.8 3.3"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>',
+  chev: '<svg class="row-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.2 4.2L19 7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  stamp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.6"/></svg>',
+  out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16 6 12l4-4M6 12h10"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.2 4.2L19 7"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+  medal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l-2.5 6h-3z"/><circle cx="12" cy="15" r="6"/><path d="m12 12.3.9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 15.5l7-7"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 4v4.6h4.6"/></svg>'
+};
+
+/* ---------- Zustand der Oberfläche ---------- */
+const S = {
+  screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
+  tab: (DB.ui && DB.ui.tab) || "tasks",
+  taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null
+};
+function decideScreen() {
+  if (S.screen === "loading") return "loading";
+  const u = me();
+  if (!u) return S.screen === "verify" || S.screen === "register" ? S.screen : "login";
+  if (!u.profile) return "onboarding";
+  return "app";
+}
+function go(patch) { Object.assign(S, patch); render(); }
+
+/* =====================================================================
+   Anmeldung / Registrierung / Bestätigung / Stammdaten
+   ===================================================================== */
+function authShell(inner) {
+  return `<div class="auth">
+    <aside class="auth-hero">
+      <img src="${LOGO}" alt="">
+      <h2>Chora</h2>
+      <span class="stripe"></span>
+      <p>Aufgaben verteilen, Punkte sammeln, gemeinsam singen.</p>
+    </aside>
+    <main class="auth-main gutter"><div class="auth-card">
+      <div class="brand"><img src="${LOGO}" alt=""><h1>Chora</h1><p>Aufgaben verteilen, Punkte sammeln.</p></div>
+      ${inner}
+    </div></main></div>`;
+}
+const errBox = () => S.error ? `<div class="form-error" role="alert">${esc(S.error)}</div>` : "";
+const fieldErr = k => S.errors[k] ? `<div class="err" id="e-${k}">${esc(S.errors[k])}</div>` : "";
+const inv = k => S.errors[k] ? ` aria-invalid="true" aria-describedby="e-${k}"` : "";
+const submitBtn = (label, icon = "") => `<button class="btn btn-primary btn-block" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : icon}${label}</button>`;
+
+function viewLogin() {
+  const reg = S.authMode === "register";
+  return authShell(`
+    <div class="seg" role="group" aria-label="Anmelden oder registrieren">
+      <button type="button" data-act="mode" data-mode="login" aria-pressed="${!reg}">Anmelden</button>
+      <button type="button" data-act="mode" data-mode="register" aria-pressed="${reg}">Registrieren</button>
+    </div>
+    <form class="form" id="f-auth" novalidate>
+      ${errBox()}
+      <div class="field"><label for="email">E-Mail-Adresse</label>
+        <input class="input" id="email" name="email" type="email" autocomplete="email" inputmode="email" value="${esc(S.email)}" placeholder="name@beispiel.de"${inv("email")}>${fieldErr("email")}</div>
+      <div class="field"><label for="password">Passwort</label>
+        <input class="input" id="password" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}"${inv("password")}>
+        ${reg && !S.errors.password ? '<div class="hint">Mindestens 8 Zeichen.</div>' : ""}${fieldErr("password")}</div>
+      ${submitBtn(reg ? "Konto erstellen" : "Anmelden")}
+    </form>
+    ${reg ? `<p class="auth-text" style="font-size:14px">Danach schicken wir dir einen Code, mit dem du deine E-Mail-Adresse bestätigst.</p>` : ""}
+    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
+}
+
+function viewVerify() {
+  return authShell(`
+    <div style="display:grid;gap:8px">
+      <div class="auth-step">Schritt 1 von 2</div>
+      <h2 class="auth-title">E-Mail-Adresse bestätigen</h2>
+      <p class="auth-text">Wir haben einen 6-stelligen Code an <b>${esc(S.email)}</b> geschickt. Gib ihn hier ein.</p>
+    </div>
+    <form class="form" id="f-verify" novalidate>
+      ${errBox()}
+      <div class="field"><label for="code">Bestätigungscode</label>
+        <input class="input code-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></div>
+      ${submitBtn("Bestätigen", I.check)}
+    </form>
+    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Es wird keine E-Mail verschickt. Jeder 6-stellige Code funktioniert.</div>` : ""}
+    <div class="auth-foot"><button class="link" type="button" data-act="resend">Code erneut senden</button> · <button class="link" type="button" data-act="to-login">Andere Adresse</button></div>`);
+}
+
+function profileFields(p, idp = "") {
+  const voice = p.voice || "";
+  return `
+    <div class="two">
+      <div class="field"><label for="${idp}first">Vorname</label>
+        <input class="input" id="${idp}first" name="firstName" autocomplete="given-name" value="${esc(p.firstName)}"${inv("firstName")}>${fieldErr("firstName")}</div>
+      <div class="field"><label for="${idp}last">Nachname</label>
+        <input class="input" id="${idp}last" name="lastName" autocomplete="family-name" value="${esc(p.lastName)}"${inv("lastName")}>${fieldErr("lastName")}</div>
+    </div>
+    <fieldset class="field" style="border:0;padding:0;margin:0">
+      <legend style="font-size:14px;font-weight:600;margin-bottom:6px">Stimmgruppe</legend>
+      <div class="voices">
+        ${VOICES.map(v => `<label class="voice-opt${v.key === "U" ? " wide" : ""}"><input type="radio" name="voice" value="${v.key}" ${voice === v.key ? "checked" : ""}><span>${v.label}</span></label>`).join("")}
+      </div>${fieldErr("voice")}
+    </fieldset>
+    <div class="field"><label for="${idp}cid">Chor-ID <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <input class="input" id="${idp}cid" name="chorId" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(p.chorId)}" placeholder="${esc(chorIdExample(p))}"${inv("chorId")}>
+      ${S.errors.chorId ? fieldErr("chorId") : '<div class="hint">Kürzel der Stimmgruppe (B, T, A1, A2, S1, S2), Bindestrich, Name. Nur Buchstaben und Bindestriche.</div>'}
+    </div>`;
+}
+function chorIdExample(p) {
+  const k = p.voice && p.voice !== "U" ? p.voice : "A1";
+  const n = (p.firstName || "").replace(/[^\p{L}-]/gu, "") || "Lena";
+  return `z. B. ${k}-${n}`;
+}
+function readProfile(form) {
+  const f = new FormData(form);
+  let chorId = String(f.get("chorId") || "").trim();
+  chorId = chorId.replace(/^(b|t|a1|a2|s1|s2)-/i, m => m.toUpperCase());
+  return { firstName: String(f.get("firstName") || "").trim(), lastName: String(f.get("lastName") || "").trim(), voice: f.get("voice") || "", chorId };
+}
+function validateProfile(p) {
+  const e = {};
+  if (!p.firstName) e.firstName = "Bitte gib deinen Vornamen ein.";
+  if (!p.lastName) e.lastName = "Bitte gib deinen Nachnamen ein.";
+  if (!p.voice) e.voice = "Bitte wähle eine Stimmgruppe. Wenn du es nicht weißt, wähle „unbekannt“.";
+  if (p.chorId && !CHOR_ID_RE.test(p.chorId)) e.chorId = "So sieht eine Chor-ID aus: Kürzel (B, T, A1, A2, S1, S2), Bindestrich, Name aus Buchstaben, z. B. S2-Marie-Luise.";
+  return e;
+}
+
+function viewOnboarding() {
+  const draft = S.draft || {};
+  return authShell(`
+    <div style="display:grid;gap:8px">
+      <div class="auth-step">Schritt 2 von 2</div>
+      <h2 class="auth-title">Erzähl uns, wer du bist</h2>
+      <p class="auth-text">Diese Angaben sehen die anderen Mitglieder deines Chors.</p>
+    </div>
+    <form class="form" id="f-onboard" novalidate>
+      ${errBox()}
+      ${profileFields(draft, "o-")}
+      ${submitBtn("Weiter zu Chora")}
+    </form>
+    <div class="auth-foot"><button class="link" type="button" data-act="logout">Abmelden</button></div>`);
+}
+
+/* =====================================================================
+   Haupt-App
+   ===================================================================== */
+const ALL_TABS = [
+  { key: "tasks", label: "Aufgaben", icon: I.tasks },
+  { key: "points", label: "Punkte", icon: I.points },
+  { key: "checks", label: "Checks", icon: I.stamp, role: "aufgabenchecker" },
+  { key: "members", label: "Mitglieder", icon: I.members },
+  { key: "profile", label: "Profil", icon: I.profile }
+];
+const tabsFor = () => ALL_TABS.filter(t => !t.role || can(t.role));
+
+function viewApp() {
+  const TABS = tabsFor();
+  if (!TABS.some(t => t.key === S.tab)) S.tab = "tasks";
+  const tab = TABS.find(t => t.key === S.tab);
+  const pending = can("aufgabenchecker") ? Api.pendingReports().filter(r => !r.own).length : 0;
+  const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
+  const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew)) || (S.tab === "members" && S.memberId));
+  const title = isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
+  const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew
+    ? `<button class="btn btn-primary btn-sm" data-act="new-task">${I.plus}Neue Aufgabe</button>` : "";
+  let content = "";
+  if (S.tab === "tasks") content = tasksView();
+  else if (S.tab === "points") content = pointsView();
+  else if (S.tab === "members") content = membersView();
+  else if (S.tab === "checks") content = checksView();
+  else content = profileView();
+  return `<div class="app" style="--tabs:${TABS.length}">
+    <header class="topbar gutter">
+      ${narrowDetail ? `<button class="icon-btn" data-act="back" aria-label="Zurück zur Liste">${I.back}</button>` : `<img src="${LOGO}" alt="">`}
+      <h1>${title}</h1>${addBtn}
+    </header>
+    <nav class="nav" aria-label="Bereiche">
+      <div class="nav-logo"><img src="${LOGO}" alt="Chora"></div>
+      ${TABS.map(t => `<button data-act="tab" data-tab="${t.key}" ${t.key === S.tab ? 'aria-current="page"' : ""}><span class="ico">${t.icon}${t.key === "checks" && pending ? `<span class="count-badge">${pending}</span>` : ""}</span>${t.label}</button>`).join("")}
+    </nav>
+    <div class="main">${content}</div>
+  </div>`;
+}
+
+/* ---------- Aufgaben ---------- */
+function filteredTasks() {
+  const q = S.q.trim().toLowerCase();
+  const u = me();
+  return DB.tasks.filter(t => (!S.onlyMine || u.claims.includes(t.id)) && (!q || t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)));
+}
+function taskRow(t) {
+  const u = me(), mine = u.claims.includes(t.id), full = t.assigned >= t.total;
+  return `<li><button class="row gutter" data-act="task" data-id="${t.id}" ${S.taskId === t.id && wide() ? 'aria-current="true"' : ""}>
+    <span class="row-main"><span class="row-title">${esc(t.title)}${mine ? mineTag(t.id) : ""}</span>
+    <span class="row-sub num">${scopeText(t)}</span></span>
+    <span class="row-meta"><span class="seats">${t.assigned} von ${t.total}</span><span class="seatbar${full ? " full" : ""}"><i style="width:${Math.round(t.assigned / t.total * 100)}%"></i></span></span>
+    ${I.chev}</button></li>`;
+}
+function mineTag(id) {
+  const r = Api.myReport(id);
+  if (r && r.status === "reported") return '<span class="mine-dot wait">GEMELDET</span>';
+  if (r && r.status === "rejected") return '<span class="mine-dot no">ABGELEHNT</span>';
+  return '<span class="mine-dot">DEINE</span>';
+}
+function taskListHTML() {
+  const list = filteredTasks();
+  if (!DB.tasks.length) return `<div class="empty">${I.tasks}<div>Es gibt noch keine Aufgaben.${can("aufgabenverwalter") ? "<br>Leg die erste mit „Neue Aufgabe“ an." : ""}</div></div>`;
+  if (!list.length) return S.onlyMine && !S.q
+    ? `<div class="empty">${I.tasks}<div>Du hast noch keine Aufgabe übernommen.</div></div>`
+    : `<div class="empty">${I.search}<div>Keine Aufgabe passt zu „${esc(S.q)}“.</div></div>`;
+  if (S.group === "az") {
+    return `<ul class="rows">${[...list].sort((a, b) => a.title.localeCompare(b.title, "de")).map(taskRow).join("")}</ul>`;
+  }
+  const cats = [...new Set(list.map(t => t.category))].sort((a, b) => {
+    const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "de");
+  });
+  return cats.map(c => {
+    const items = list.filter(t => t.category === c);
+    return `<section><h3 class="group-h gutter">${esc(c)} <span class="count">${items.length}</span></h3><ul class="rows">${items.map(taskRow).join("")}</ul></section>`;
+  }).join("");
+}
+function tasksView() {
+  const isNew = S.editTask === "new" && can("aufgabenverwalter");
+  if (wide() && !S.taskId && !isNew && DB.tasks.length) S.taskId = firstVisibleTaskId();
+  const showDetail = !wide() && (S.taskId || isNew);
+  const t = DB.tasks.find(x => x.id === S.taskId);
+  const editing = S.editTask && S.editTask === S.taskId && can("aufgabenverwalter");
+  const detail = isNew ? taskEdit(null) : t ? (editing ? taskEdit(t) : taskDetail(t)) : "";
+  if (showDetail) return `<div class="pane">${detail}</div>`;
+  return `<div class="split">
+    <div class="list-pane" id="list-pane">
+      <div class="toolbar gutter" id="tb">
+        <div class="search">${I.search}<label class="sr" for="q">Aufgaben durchsuchen</label><input class="input" id="q" type="search" placeholder="Aufgabe suchen" value="${esc(S.q)}" autocomplete="off"></div>
+        <div class="chips" role="group" aria-label="Sortierung">
+          <button class="chip" data-act="group" data-g="cat" aria-pressed="${S.group === "cat"}">Nach Kategorie</button>
+          <button class="chip" data-act="group" data-g="az" aria-pressed="${S.group === "az"}">A–Z</button>
+          <span class="chip-sep" aria-hidden="true"></span>
+          <button class="chip" data-act="only-mine" aria-pressed="${!!S.onlyMine}">Meine</button>
+        </div>
+      </div>
+      <div id="task-list">${taskListHTML()}</div>
+    </div>
+    <div class="detail-pane" id="detail-pane">${detail || `<div class="empty">${I.tasks}<div>${DB.tasks.length ? "Wähle links eine Aufgabe." : "Es gibt noch keine Aufgaben."}</div></div>`}</div>
+  </div>`;
+}
+function firstVisibleTaskId() {
+  const l = filteredTasks();
+  if (!l.length) return null;
+  if (S.group === "az") return [...l].sort((a, b) => a.title.localeCompare(b.title, "de"))[0].id;
+  const cats = CATEGORY_ORDER.filter(c => l.some(t => t.category === c));
+  return (l.find(t => t.category === cats[0]) || l[0]).id;
+}
+function taskDetail(t) {
+  if (!t) return `<div class="empty">${I.tasks}<div>Diese Aufgabe gibt es nicht mehr.</div></div>`;
+  const u = me(), mine = u.claims.includes(t.id), full = t.assigned >= t.total, free = t.total - t.assigned;
+  const today = todayISO(), notYet = today < t.validFrom, expired = today > t.validTo;
+  let btn, note = "";
+  if (mine) {
+    const r = Api.myReport(t.id), last = lastCheckFor(t.id);
+    const markBtn = `<button class="btn btn-primary btn-block" data-act="done" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.check}Als erledigt melden</button>`;
+    if (r && r.status === "reported") {
+      btn = `<div class="status wait" role="status"><b>Als erledigt gemeldet am ${fmtDate(r.date)}</b>Ein Aufgabenchecker bestätigt das noch.</div>
+        <button class="btn btn-secondary btn-block" data-act="undo-done" data-id="${t.id}">${I.reset}Meldung zurücknehmen</button>`;
+    } else if (r && r.status === "rejected") {
+      btn = `<div class="status no" role="status"><b>Abgelehnt${r.checker ? ` von ${esc(r.checker)}` : ""}${r.decidedAt ? ` am ${fmtDate(r.decidedAt)}` : ""}</b>
+        ${r.comment ? `<blockquote>${esc(r.comment)}</blockquote>` : "Es wurde kein Kommentar angegeben."}</div>${markBtn}`;
+    } else btn = markBtn;
+    note = last ? `Zuletzt bestätigt am ${fmtDate(last.date)} von ${esc(last.checker)}.` : "Du hast diese Aufgabe übernommen. Melde sie, sobald du sie erledigt hast.";
+  }
+  else if (expired) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = `Die Aufgabe war nur bis ${fmtDate(t.validTo)} gültig.`; }
+  else if (notYet) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = `Du kannst die Aufgabe ab ${fmtDate(t.validFrom)} übernehmen.`; }
+  else if (full) { btn = `<button class="btn btn-primary btn-block" disabled>Aufgabe übernehmen</button>`; note = "Alle Plätze sind vergeben."; }
+  else { btn = `<button class="btn btn-primary btn-block" data-act="claim" data-id="${t.id}" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Aufgabe übernehmen</button>`; note = free === 1 ? "Noch 1 Platz frei." : `Noch ${free} Plätze frei.`; }
+  const dots = t.total <= 50 ? `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${i < t.assigned ? (mine && i === t.assigned - 1 ? "me" : "on") : ""}"></i>`).join("")}</div>` : "";
+  return `<article class="detail gutter">
+    <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(t.category)}</div>
+      ${can("aufgabenverwalter") ? `<button class="btn btn-secondary btn-sm" data-act="edit-task" data-id="${t.id}">${I.edit}Bearbeiten</button>` : ""}</div>
+      <h2>${esc(t.title)}</h2></div>
+    <div class="scope"><b>${P(t.points)}</b><span>pro ${INTERVALS[t.interval]}</span></div>
+    <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${t.assigned} von ${t.total} Plätzen vergeben</div></div>
+    <dl class="props">
+      <div><dt>Aufgabe</dt><dd>${esc(t.title)}</dd></div>
+      <div><dt>Kategorie</dt><dd>${esc(t.category)}</dd></div>
+      <div><dt>Intervall</dt><dd>${INTERVALS[t.interval]}</dd></div>
+      <div><dt>Punkte</dt><dd>${P(t.points)}</dd></div>
+      <div><dt>Gesamt</dt><dd>${t.total}</dd></div>
+      <div><dt>Vergeben</dt><dd>${t.assigned}</dd></div>
+      <div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>
+      <div><dt>Gültig bis</dt><dd>${fmtDate(t.validTo)}</dd></div>
+    </dl>
+    <div class="cta">${btn}<p class="cta-note">${note}</p></div>
+  </article>`;
+}
+
+function taskEdit(t) {
+  const isNew = !t;
+  const nextYear = new Date().getFullYear() + 1;
+  const d = S.taskDraft || t || { title: "", category: "", interval: "Q", points: 5, total: 1, validFrom: todayISO(), validTo: `${nextYear}-12-31` };
+  const cats = [...new Set(DB.tasks.map(x => x.category))].sort((a, b) => a.localeCompare(b, "de"));
+  const num = (k, label, min, max) => `<div class="field"><label for="te-${k}">${label}</label>
+    <input class="input num" id="te-${k}" name="${k}" type="number" inputmode="numeric" min="${min}" ${max ? `max="${max}"` : ""} step="1" value="${esc(d[k])}"${inv(k)}>${fieldErr(k)}</div>`;
+  return `<form class="detail gutter" id="f-task" data-id="${isNew ? "" : t.id}" novalidate>
+    <div class="headline"><div class="eyebrow">${isNew ? "Neu" : "Aufgabe bearbeiten"}</div><h2>${isNew ? "Neue Aufgabe" : esc(t.title)}</h2></div>
+    ${errBox()}
+    <div class="field"><label for="te-title">Aufgabe</label>
+      <input class="input" id="te-title" name="title" value="${esc(d.title)}"${inv("title")}>${fieldErr("title")}</div>
+    <div class="two">
+      <div class="field"><label for="te-category">Kategorie</label>
+        <input class="input" id="te-category" name="category" list="te-cats" value="${esc(d.category)}"${inv("category")}>
+        <datalist id="te-cats">${cats.map(c => `<option value="${esc(c)}"></option>`).join("")}</datalist>${fieldErr("category")}</div>
+      <div class="field"><label for="te-interval">Intervall</label>
+        <select class="select" id="te-interval" name="interval">${Object.entries(INTERVALS).map(([k, l]) => `<option value="${k}" ${d.interval === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    </div>
+    <div class="two">${num("points", "Punkte (p)", 1)}${num("total", "Plätze gesamt", 1, 50)}</div>
+    ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Vergeben: ${t.assigned} von ${t.total}. Die Zahl ergibt sich aus den Übernahmen im laufenden Jahr.</p>`}
+    <div class="two">
+      <div class="field"><label for="te-validFrom">Gültig ab</label>
+        <input class="input" id="te-validFrom" name="validFrom" type="date" value="${esc(d.validFrom)}"${inv("validFrom")}>${fieldErr("validFrom")}</div>
+      <div class="field"><label for="te-validTo">Gültig bis</label>
+        <input class="input" id="te-validTo" name="validTo" type="date" value="${esc(d.validTo)}"${inv("validTo")}>${fieldErr("validTo")}</div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : (isNew ? I.plus : I.save)}${isNew ? "Aufgabe anlegen" : "Speichern"}</button>
+      <button class="btn btn-secondary" type="button" data-act="cancel-edit">Abbrechen</button>
+    </div>
+  </form>`;
+}
+function readTask(f) {
+  const g = k => String(new FormData(f).get(k) || "").trim();
+  const n = k => /^\d+$/.test(g(k)) ? parseInt(g(k), 10) : NaN;
+  return { title: g("title"), category: g("category"), interval: g("interval"), points: n("points"), total: n("total"), validFrom: g("validFrom"), validTo: g("validTo") };
+}
+function validateTask(t, existing) {
+  const e = {};
+  if (!t.title) e.title = "Bitte gib einen Titel ein.";
+  if (!t.category) e.category = "Bitte gib eine Kategorie ein.";
+  if (!(t.points >= 1)) e.points = "Ganze Zahl ab 1.";
+  if (!(t.total >= 1 && t.total <= 50)) e.total = "Ganze Zahl von 1 bis 50.";
+  else if (existing && t.total < existing.assigned) e.total = `Es sind schon ${existing.assigned} Plätze vergeben.`;
+  if (!t.validFrom) e.validFrom = "Bitte wähle ein Datum.";
+  if (!t.validTo) e.validTo = "Bitte wähle ein Datum.";
+  else if (t.validFrom && t.validTo < t.validFrom) e.validTo = "Muss am oder nach „Gültig ab“ liegen.";
+  return e;
+}
+
+/* ---------- Punkte ---------- */
+function pointsView() {
+  const u = me(), p = Api.pointsOf(u), sum = p.committed + p.collected, lv = levelOf(sum);
+  const checks = [...u.checks].sort((a, b) => b.date.localeCompare(a.date));
+  const scale = 50, pos = v => Math.min(100, v / scale * 100);
+  return `<div class="pane"><div class="points gutter">
+    <section class="points-sum" aria-label="Übersicht">
+      <div class="year"><b>${new Date().getFullYear()}</b><span>Zum Jahreswechsel werden viele Punkte auf 0 gesetzt.</span></div>
+      <div class="trio">
+        <div class="big-stat collected"><span>Gesammelt</span><b>${P(p.collected)}</b><small>${u.checks.length} ${u.checks.length === 1 ? "Check" : "Checks"}</small></div>
+        <div class="big-stat committed"><span>Zugesagt</span><b>${P(p.committed)}</b><small>${u.claims.length} ${u.claims.length === 1 ? "Aufgabe" : "Aufgaben"}</small></div>
+        <div class="big-stat sum"><span>Summe</span><b>${P(sum)}</b><small>für dein Level</small></div>
+      </div>
+      <div class="level">
+        <div class="level-head">
+          <span class="level-badge lv-${lv.cls}">${I.medal}${lv.name}</span>
+          <span class="level-next">${lv.next ? `noch ${P(lv.need)} bis ${lv.next.name}` : "Höchstes Level erreicht"}</span>
+        </div>
+        <div>
+          <div class="track" role="img" aria-label="Summe ${sum} Punkte, Level ${lv.name}"><i style="width:${pos(sum)}%"></i>${LEVELS.slice(1).map(l => `<s style="left:${pos(l.min)}%"></s>`).join("")}</div>
+          <div class="track-labels">${LEVELS.map(l => `<span style="left:${pos(l.min)}%">${l.name}<b>${P(l.min)}</b></span>`).join("")}</div>
+        </div>
+      </div>
+      ${!u.claims.length ? `<button class="btn btn-secondary" data-act="tab" data-tab="tasks">${I.tasks}Aufgaben ansehen</button>` : ""}
+    </section>
+    <section style="min-width:0">
+      <div class="section-h"><h2>Aufgabenchecks</h2><span class="num">${checks.length}</span></div>
+      ${checks.length ? `<ul class="rows">${checks.map(c => {
+        const t = DB.tasks.find(x => x.id === c.taskId);
+        return `<li class="check"><span class="check-title">${esc(c.title || (t ? t.title : "Aufgabe"))}</span><span class="check-pts">+${P(c.points)}</span>
+          <span class="check-meta"><span class="num">${fmtDate(c.date)}</span><span class="checker">${I.stamp}bestätigt von <span class="badge">${esc(c.checker)}</span></span></span></li>`;
+      }).join("")}</ul>` : `<div class="empty" style="min-height:180px">${I.stamp}<div>Noch keine Aufgabenchecks.<br>Sobald jemand bestätigt, dass du eine Aufgabe erledigt hast, erscheint sie hier.</div></div>`}
+    </section>
+  </div></div>`;
+}
+
+/* ---------- Mitglieder ---------- */
+function filteredMembers() {
+  const q = S.mq.trim().toLowerCase();
+  return Api.members().filter(m =>
+    (S.voiceFilter === "all" || m.voice === S.voiceFilter) &&
+    (!q || `${m.firstName || ""} ${m.lastName || ""} ${m.chorId || ""}`.toLowerCase().includes(q)));
+}
+const voiceTag = v => `<span class="vtag">${v === "U" ? "?" : v}</span>`;
+function memberRow(m) {
+  const admin = can("mitgliedsverwalter");
+  const cur = S.memberId === m.id && wide() ? 'aria-current="true"' : "";
+  if (!admin) {
+    return `<li><button class="row gutter" data-act="member" data-id="${esc(m.id)}" ${cur}>
+      <span class="avatar${m.me ? " me" : ""}">${m.voice === "U" ? "?" : m.voice}</span>
+      <span class="row-main"><span class="row-title">${m.chorId ? esc(m.chorId) : '<span style="color:var(--muted)">ohne Chor-ID</span>'}${m.me ? '<span class="mine-dot">DU</span>' : ""}</span>
+      <span class="row-sub">${voiceLabel(m.voice)}</span></span>${I.chev}</button></li>`;
+  }
+  return `<li><button class="row gutter${m.active ? "" : " inactive"}" data-act="member" data-id="${esc(m.id)}" ${cur}>
+    <span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
+    <span class="row-main">
+      <span class="row-title">${esc(m.firstName)} ${esc(m.lastName)}${m.me ? '<span class="mine-dot">DU</span>' : ""}${m.active ? "" : '<span class="inactive-tag">INAKTIV</span>'}</span>
+      <span class="row-sub">${voiceTag(m.voice)} ${m.chorId ? `<span class="cid">${esc(m.chorId)}</span> · ` : ""}${voiceLabel(m.voice)}</span>
+      <span class="pts-line">gesammelt ${P(m.collected)} · zugesagt ${P(m.committed)} · seit ${m.since.slice(0, 4)}</span>
+    </span>
+    <span class="missing${m.missing ? "" : " ok"}"><b>${P(m.missing)}</b><span>fehlen</span></span>
+    ${I.chev}</button></li>`;
+}
+function memberListHTML() {
+  const l = filteredMembers();
+  return l.length ? `<ul class="rows">${l.map(memberRow).join("")}</ul>` : `<div class="empty">${I.members}<div>Kein Mitglied gefunden.</div></div>`;
+}
+function membersView() {
+  const all = Api.members();
+  if (S.memberId && !all.some(m => m.id === S.memberId)) S.memberId = null;
+  if (wide() && !S.memberId) { const l = filteredMembers(); S.memberId = l.length ? l[0].id : null; }
+  const m = all.find(x => x.id === S.memberId);
+  if (!wide() && S.memberId) return `<div class="pane">${memberDetail(m)}</div>`;
+  const vf = [["all", "Alle"], ...VOICES.map(v => [v.key, v.key === "U" ? "unbekannt" : v.key])];
+  return `<div class="split">
+    <div class="list-pane" id="list-pane">
+      <div class="toolbar gutter" id="tb">
+        <div class="search">${I.search}<label class="sr" for="mq">Mitglieder durchsuchen</label><input class="input" id="mq" type="search" placeholder="${can("mitgliedsverwalter") ? "Name oder Chor-ID" : "Chor-ID suchen"}" value="${esc(S.mq)}" autocomplete="off"></div>
+        <div class="chips" role="group" aria-label="Nach Stimmgruppe filtern">
+          ${vf.map(([k, l]) => `<button class="chip" data-act="vf" data-v="${k}" aria-pressed="${S.voiceFilter === k}">${l}</button>`).join("")}
+        </div>
+      </div>
+      <div id="member-list">${memberListHTML()}</div>
+    </div>
+    <div class="detail-pane" id="detail-pane">${m ? memberDetail(m) : `<div class="empty">${I.members}<div>Wähle links ein Mitglied.</div></div>`}</div>
+  </div>`;
+}
+function memberDetail(m) {
+  if (!m) return `<div class="empty">${I.members}<div>Dieses Mitglied gibt es nicht mehr.</div></div>`;
+  if (!can("mitgliedsverwalter")) {
+    return `<article class="detail gutter">
+      <div class="person"><span class="avatar${m.me ? " me" : ""}">${m.voice === "U" ? "?" : m.voice}</span>
+        <div class="headline" style="gap:4px"><div class="eyebrow">${voiceLabel(m.voice)}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2></div></div>
+      <dl class="props">
+        <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
+        <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
+      </dl>
+      ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
+    </article>`;
+  }
+  const pct = m.committed ? Math.min(100, Math.round(m.collected / m.committed * 100)) : 0;
+  const roles = m.roles || [];
+  const status = m.me ? "" : (S.confirmDeact === m.id
+    ? `<div class="confirm" role="alert">${esc(m.firstName)} ${esc(m.lastName)} deaktivieren? Andere Mitglieder sehen ${esc(m.firstName)} dann nicht mehr in der Liste.
+        <div><button class="btn btn-primary btn-sm" data-act="deact-yes" data-id="${esc(m.id)}">Deaktivieren</button><button class="btn btn-secondary btn-sm" data-act="deact-no">Abbrechen</button></div></div>`
+    : m.active
+      ? `<button class="btn btn-danger" data-act="deact" data-id="${esc(m.id)}">${I.pause}Mitglied deaktivieren</button>`
+      : `<button class="btn btn-secondary" data-act="react" data-id="${esc(m.id)}">${I.check}Mitglied aktivieren</button>`);
+  return `<article class="detail gutter">
+    <div class="person"><span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
+      <div class="headline" style="gap:4px"><div class="eyebrow">${voiceLabel(m.voice)}${m.active ? "" : " · inaktiv"}</div><h2>${esc(m.firstName)} ${esc(m.lastName)}</h2></div></div>
+    <div class="stats">
+      <div class="stat green"><span>Gesammelt</span><b>${P(m.collected)}</b></div>
+      <div class="stat"><span>Zugesagt</span><b>${P(m.committed)}</b></div>
+      <div class="stat orange"><span>Fehlend</span><b>${P(m.missing)}</b></div>
+    </div>
+    <div><div class="meter" role="img" aria-label="${pct} Prozent gesammelt"><i style="width:${pct}%"></i></div>
+      <div class="meter-cap"><span>${pct} % der zugesagten Punkte</span><span></span></div></div>
+    <dl class="props">
+      <div><dt>Vorname</dt><dd>${esc(m.firstName)}</dd></div>
+      <div><dt>Nachname</dt><dd>${esc(m.lastName)}</dd></div>
+      <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
+      <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
+      <div><dt>Mitglied seit</dt><dd>${fmtDate(m.since)}</dd></div>
+      <div><dt>Status</dt><dd>${m.active ? "aktiv" : "inaktiv"}</dd></div>
+    </dl>
+    <form class="field" id="f-since" data-id="${esc(m.id)}" novalidate>
+      <label for="since-${esc(m.id)}">Mitglied seit ändern</label>
+      <div class="inline-form"><input class="input" type="date" id="since-${esc(m.id)}" name="since" value="${esc(m.since)}" max="${todayISO()}"${inv("since")}>
+        <button class="btn btn-secondary" type="submit">${I.save}Speichern</button></div>${fieldErr("since")}
+    </form>
+    <section style="display:grid;gap:8px">
+      <h3 class="h3">Rollen</h3>
+      <div class="roles">${ROLES.map(r => {
+        const locked = m.me && r.key === "mitgliedsverwalter" && roles.includes(r.key);
+        const id = `role-${m.id}-${r.key}`;
+        return `<div class="role"><label class="role-text" for="${id}"><b>${r.label}</b><small>${locked ? "Diese Rolle kannst du dir nicht selbst wegnehmen." : r.hint}</small></label>
+          <span class="switch"><input type="checkbox" role="switch" id="${id}" data-role="${r.key}" data-id="${esc(m.id)}" ${roles.includes(r.key) ? "checked" : ""} ${locked ? "disabled" : ""}><span></span></span></div>`;
+      }).join("")}</div>
+    </section>
+    ${status ? `<div class="status-box">${status}</div>` : ""}
+    ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
+  </article>`;
+}
+
+/* ---------- Checks ---------- */
+function checksView() {
+  const list = Api.pendingReports(), others = list.filter(r => !r.own).length, mine = me().profile.chorId;
+  return `<div class="pane"><div class="checks gutter">
+    <div class="checks-head"><h2>Als erledigt gemeldet</h2><span class="num">${others} ${others === 1 ? "offene Meldung" : "offene Meldungen"}</span></div>
+    ${mine ? "" : `<div class="form-error">Für Checks brauchst du eine Chor-ID. <button class="link" data-act="tab" data-tab="profile">Im Profil eintragen</button></div>`}
+    ${list.length ? `<ul class="reports">${list.map(reportCard).join("")}</ul>`
+      : `<div class="empty">${I.stamp}<div>Keine offenen Meldungen.<br>Wenn jemand eine Aufgabe als erledigt meldet, erscheint sie hier.</div></div>`}
+  </div></div>`;
+}
+function reportCard(r) {
+  const t = r.task || { title: "Aufgabe", points: 0 };
+  const who = r.reporter.chorId ? `<span class="badge">${esc(r.reporter.chorId)}</span>` : "ohne Chor-ID";
+  let actions;
+  if (r.own) actions = `<p class="cta-note" style="text-align:left">Deine eigene Meldung bestätigt ein anderer Aufgabenchecker.</p>`;
+  else if (S.rejecting === r.id) actions = `<form class="field" id="f-reject" data-id="${r.id}">
+      <label for="rc-${r.id}">Kommentar <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea class="textarea" id="rc-${r.id}" name="comment" maxlength="500" placeholder="Warum lehnst du ab?"></textarea>
+      <div class="report-actions"><button class="btn btn-reject" type="submit" ${S.busy ? "disabled" : ""}>Ablehnen</button><button class="btn btn-secondary" type="button" data-act="reject-cancel">Abbrechen</button></div>
+    </form>`;
+  else {
+    const off = !me().profile.chorId || S.busy ? "disabled" : "";
+    actions = `<div class="report-actions">
+      <button class="btn btn-primary" data-act="confirm" data-id="${r.id}" ${off}>${I.check}Bestätigen</button>
+      <button class="btn btn-reject" data-act="reject" data-id="${r.id}" ${off}>Ablehnen</button></div>`;
+  }
+  return `<li class="report">
+    <div class="report-head"><b>${esc(t.title)}</b><span class="check-pts">+${P(t.points)}</span></div>
+    <div class="check-meta"><span>gemeldet am <span class="num">${fmtDate(r.date)}</span></span><span class="checker">von ${who}</span></div>
+    ${actions}</li>`;
+}
+
+/* ---------- Profil ---------- */
+function profileView() {
+  const u = me(), p = S.profileDraft || u.profile;
+  return `<div class="pane"><div class="profile gutter">
+    <div class="profile-card"><span class="avatar me">${esc(initials(u.profile))}</span>
+      <div style="min-width:0"><h2>${esc(u.profile.firstName)} ${esc(u.profile.lastName)}</h2><p>${esc(u.email)}</p></div></div>
+    <form class="form" id="f-profile" novalidate>
+      ${errBox()}
+      ${profileFields(p, "p-")}
+      <button class="btn btn-primary" type="submit" id="save-profile" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.save}Änderungen speichern</button>
+    </form>
+    <div class="profile-actions">
+      <button class="btn btn-secondary" data-act="logout">${I.out}Abmelden</button>
+      ${CONFIG.mock ? (S.confirmReset
+        ? `<div class="form-error" style="display:grid;gap:10px">Alle Konten und Beispieldaten in diesem Browser löschen?
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" data-act="reset-yes">Ja, zurücksetzen</button><button class="btn btn-secondary" data-act="reset-no">Abbrechen</button></div></div>`
+        : `<button class="btn btn-ghost" data-act="reset">${I.reset}Prototyp-Daten zurücksetzen</button>`) : ""}
+    </div>
+  </div></div>`;
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, undo) {
+  clearTimeout(toastTimer);
+  const host = $("#toast-host");
+  host.innerHTML = `<div class="toast"><span>${esc(msg)}</span>${undo ? '<button data-act="undo">Rückgängig</button>' : ""}</div>`;
+  toastTimer = setTimeout(() => { host.innerHTML = ""; S.undo = null; }, 5000);
+  S.undo = undo || null;
+}
+
+/* =====================================================================
+   Rendern & Ereignisse
+   ===================================================================== */
+function render() {
+  S.screen = decideScreen();
+  const root = $("#root");
+  const keep = keepScroll();
+  if (S.screen === "loading") root.innerHTML = `<div class="auth"><main class="auth-main gutter"><div class="brand"><img src="${LOGO}" alt=""><h1>Chora</h1><p><span class="spinner" style="display:inline-block;vertical-align:-3px"></span> Daten werden geladen …</p></div></main></div>`;
+  else if (S.screen === "login") root.innerHTML = viewLogin();
+  else if (S.screen === "register") root.innerHTML = viewLogin();
+  else if (S.screen === "verify") root.innerHTML = viewVerify();
+  else if (S.screen === "onboarding") root.innerHTML = viewOnboarding();
+  else root.innerHTML = viewApp();
+  restoreScroll(keep);
+  const tb = $("#tb"); if (tb) $("#list-pane").style.setProperty("--tb-h", tb.offsetHeight + "px");
+}
+function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
+function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
+function setTab(tab) {
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null;
+  if (!wide()) { S.taskId = null; S.memberId = null; }
+  DB.ui = { tab }; saveDB(); render();
+  const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
+}
+
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act;
+  if (a === "mode") return go({ authMode: el.dataset.mode, error: "", errors: {}, email: ($("#email") || {}).value || S.email });
+  if (a === "demo") { await Api.loginDemo(el.dataset.kind); S.taskId = S.memberId = null; return go({ error: "", errors: {}, tab: "tasks" }); }
+  if (a === "to-login") return go({ screen: "login", authMode: "login", error: "" });
+  if (a === "resend") { try { await Api.resend(S.email); toast("Neuer Code ist unterwegs."); } catch (err) { go({ error: err.message }); } return; }
+  if (a === "logout") { $("#toast-host").innerHTML = ""; await Api.logout(); S.taskId = S.memberId = S.editTask = null; return go({ screen: "login", authMode: "login", error: "", errors: {}, draft: null }); }
+  if (a === "tab") return setTab(el.dataset.tab);
+  if (a === "back") {
+    if (S.editTask) { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; return render(); }
+    S.taskId = null; S.memberId = null; S.confirmDeact = null; return render();
+  }
+  if (a === "edit-task") { S.editTask = el.dataset.id; S.taskDraft = null; S.errors = {}; S.error = ""; render(); scrollDetailTop(); return; }
+  if (a === "new-task") { S.taskId = null; S.editTask = "new"; S.taskDraft = null; S.errors = {}; S.error = ""; if (wide()) markCurrent(null); render(); scrollDetailTop(); return; }
+  if (a === "cancel-edit") { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; render(); return; }
+  if (a === "deact") { S.confirmDeact = el.dataset.id; return render(); }
+  if (a === "deact-no") { S.confirmDeact = null; return render(); }
+  if (a === "deact-yes" || a === "react") {
+    const id = el.dataset.id, on = a === "react";
+    try { await Api.setActive(id, on); S.confirmDeact = null; render(); toast(on ? "Mitglied aktiviert." : "Mitglied deaktiviert."); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  if (a === "group") { S.group = el.dataset.g; if (wide()) S.taskId = null; return render(); }
+  if (a === "only-mine") { S.onlyMine = !S.onlyMine; if (wide()) S.taskId = null; return render(); }
+  if (a === "done" || a === "undo-done") {
+    const id = el.dataset.id; S.busy = true; render();
+    try {
+      if (a === "done") { await Api.markDone(id); S.busy = false; render(); toast("Als erledigt gemeldet.", async () => { await Api.undoDone(id); render(); }); }
+      else { await Api.undoDone(id); S.busy = false; render(); toast("Meldung zurückgenommen."); }
+    } catch (err) { S.busy = false; render(); toast(err.message); }
+    return;
+  }
+  if (a === "confirm") {
+    S.busy = true; render();
+    try { await Api.confirmReport(el.dataset.id); S.busy = false; render(); toast("Bestätigt. Die Punkte sind gutgeschrieben."); }
+    catch (err) { S.busy = false; render(); toast(err.message); }
+    return;
+  }
+  if (a === "reject") { S.rejecting = el.dataset.id; render(); const ta = document.getElementById("rc-" + S.rejecting); if (ta) ta.focus(); return; }
+  if (a === "reject-cancel") { S.rejecting = null; return render(); }
+  if (a === "vf") { S.voiceFilter = el.dataset.v; if (wide()) S.memberId = null; return render(); }
+  if (a === "task") {
+    S.taskId = el.dataset.id; S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = "";
+    if (wide()) { $("#detail-pane").innerHTML = taskDetail(DB.tasks.find(t => t.id === S.taskId)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
+    else { render(); $(".pane").scrollTop = 0; }
+    return;
+  }
+  if (a === "member") {
+    S.memberId = el.dataset.id; S.confirmDeact = null;
+    if (wide()) { $("#detail-pane").innerHTML = memberDetail(Api.members().find(m => m.id === S.memberId)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
+    else { render(); $(".pane").scrollTop = 0; }
+    return;
+  }
+  if (a === "claim") {
+    const id = el.dataset.id; S.busy = true; render();
+    try {
+      await Api.claim(id); S.busy = false; render();
+      const t = DB.tasks.find(x => x.id === id);
+      toast(`Übernommen: ${P(t.points)} zugesagt`, async () => { await Api.unclaim(id); render(); toast("Übernahme zurückgenommen."); });
+    } catch (err) { S.busy = false; render(); toast(err.message); }
+    return;
+  }
+  if (a === "undo") { const u = S.undo; $("#toast-host").innerHTML = ""; S.undo = null; if (u) u(); return; }
+  if (a === "reset") return go({ confirmReset: true });
+  if (a === "reset-no") return go({ confirmReset: false });
+  if (a === "reset-yes") { DB = seed(); saveDB(); return go({ confirmReset: false, screen: "login", authMode: "login", taskId: null, memberId: null, tab: "tasks" }); }
+});
+function scrollDetailTop() { const d = $("#detail-pane") || $(".pane"); if (d) d.scrollTop = 0; }
+document.addEventListener("change", async e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.role) return;
+  try { await Api.setRole(el.dataset.id, el.dataset.role, el.checked); render(); }
+  catch (err) { el.checked = !el.checked; toast(err.message); }
+});
+function markCurrent(el) {
+  document.querySelectorAll('#list-pane .row[aria-current]').forEach(r => r.removeAttribute("aria-current"));
+  if (el) el.setAttribute("aria-current", "true");
+}
+
+document.addEventListener("input", e => {
+  if (e.target.id === "q") { S.q = e.target.value; $("#task-list").innerHTML = taskListHTML(); }
+  if (e.target.id === "mq") { S.mq = e.target.value; $("#member-list").innerHTML = memberListHTML(); }
+  if (e.target.id === "code") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
+});
+
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "f-auth") {
+    const email = f.email.value.trim(), pw = f.password.value, reg = S.authMode === "register";
+    const errors = {};
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Bitte gib eine gültige E-Mail-Adresse ein.";
+    if (!pw) errors.password = "Bitte gib ein Passwort ein.";
+    else if (reg && pw.length < 8) errors.password = "Das Passwort braucht mindestens 8 Zeichen.";
+    if (Object.keys(errors).length) return go({ errors, error: "", email });
+    go({ busy: true, errors: {}, error: "", email });
+    try {
+      if (reg) { const r = await Api.register(email, pw); go(r && r.status === "ok" ? { busy: false, tab: "tasks" } : { busy: false, screen: "verify" }); }
+      else { await Api.login(email, pw); go({ busy: false, tab: "tasks" }); }
+    } catch (err) {
+      if (err.code === "unverified") return go({ busy: false, screen: "verify", error: "" });
+      if (err.code === "exists") return go({ busy: false, authMode: "login", error: err.message });
+      go({ busy: false, error: err.message });
+    }
+  }
+  if (f.id === "f-verify") {
+    go({ busy: true, error: "" });
+    try { await Api.verify(S.email, f.code.value.trim()); go({ busy: false }); }
+    catch (err) { go({ busy: false, error: err.message }); }
+  }
+  if (f.id === "f-reject") {
+    const id = f.dataset.id, comment = f.comment.value.trim();
+    go({ busy: true });
+    try { await Api.rejectReport(id, comment); go({ busy: false, rejecting: null }); toast("Abgelehnt."); }
+    catch (err) { go({ busy: false, rejecting: null }); toast(err.message); }
+    return;
+  }
+  if (f.id === "f-since") {
+    const id = f.dataset.id, v = f.since.value;
+    if (!v) return go({ errors: { since: "Bitte wähle ein Datum." } });
+    if (v > todayISO()) return go({ errors: { since: "Das Datum darf nicht in der Zukunft liegen." } });
+    try { await Api.setSince(id, v); go({ errors: {} }); toast("Datum gespeichert."); }
+    catch (err) { toast(err.message); }
+    return;
+  }
+  if (f.id === "f-task") {
+    const id = f.dataset.id, t = readTask(f), errors = validateTask(t, id ? DB.tasks.find(x => x.id === id) : null);
+    if (Object.keys(errors).length) { go({ errors, error: "", taskDraft: t }); return; }
+    go({ busy: true, errors: {}, error: "", taskDraft: t });
+    try {
+      if (id) { await Api.updateTask(id, t); go({ busy: false, editTask: null, taskDraft: null }); toast("Aufgabe gespeichert."); }
+      else { const newId = await Api.createTask(t); go({ busy: false, editTask: null, taskDraft: null, taskId: newId, q: "", onlyMine: false }); toast("Aufgabe angelegt."); }
+    }
+    catch (err) { go({ busy: false, error: err.message }); }
+    return;
+  }
+  if (f.id === "f-onboard" || f.id === "f-profile") {
+    const p = readProfile(f), errors = validateProfile(p);
+    const draftKey = f.id === "f-onboard" ? "draft" : "profileDraft";
+    if (Object.keys(errors).length) return go({ errors, error: "", [draftKey]: p });
+    go({ busy: true, errors: {}, error: "", [draftKey]: p });
+    try {
+      await Api.saveProfile(p);
+      go({ busy: false, [draftKey]: null });
+      if (f.id === "f-onboard") { S.tab = "tasks"; render(); toast(`Willkommen bei Chora, ${p.firstName}!`); }
+      else toast("Profil gespeichert.");
+    } catch (err) {
+      go({ busy: false, errors: err.code === "chorId" ? { chorId: err.message } : {}, error: err.code === "chorId" ? "" : err.message });
+    }
+  }
+});
+
+let lastWide = wide();
+addEventListener("resize", () => { const w = wide(); if (w !== lastWide) { lastWide = w; render(); } });
+
+if (window.CHORA_PWA && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then(reg => {
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(() => {}); });
+  }).catch(() => {});
+  // Neue Version beim nächsten Start sofort übernehmen (nicht beim allerersten Besuch)
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController && !reloaded && S.screen !== "onboarding") { reloaded = true; location.reload(); }
+  });
+}
+
+async function boot() {
+  if (!CONFIG.mock && Remote.loadSession()) {
+    S.screen = "loading"; render();
+    try { await Remote.token(true); await reload(); S.screen = "app"; }
+    catch (e) { Remote.clear(); CACHE.me = null; S.screen = "login"; if (e.code === "offline") S.error = e.message; }
+  }
+  render();
+}
+boot();
+</script>
+
+</body>
+</html>
