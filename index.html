@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.12.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.12.1";</script>
 </head>
 <body>
 <style>
@@ -454,7 +454,7 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .ev-date small { font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .ev-date b { font-family: var(--display); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .row.weekly .row-title { color: var(--muted); font-weight: 600; }
-.row.weekly .ev-date { background: transparent; border: 1.5px dashed var(--line); }
+.row.weekly .ev-date { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
 .row.weekly .ev-date b { font-weight: 700; color: var(--muted); }
 .row.weekly { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
 .row.overdue { background: var(--orange-soft); }
@@ -2179,12 +2179,12 @@ function visibleEvents() {
 function eventRow(o) {
   const over = evOverdue(o), under = evUnderstaffed(o), del = !!o.deletedAt;
   const cur = S.evKey === o.key && wide() ? 'aria-current="true"' : "";
-  const sub = [o.time ? `${o.time} Uhr` : "", esc(o.category), esc(o.location)].filter(Boolean).join(" · ");
+  const sub = [o.time ? `${o.time} Uhr` : "", esc(o.category)].filter(Boolean).join(" · ");
   let line = "";
   if (del) line = `<span class="ev-line">Gelöscht am ${fmtDate(isoLocal(o.deletedAt))}</span>`;
   else if (over) line = `<span class="ev-line warn">Rückmeldung fehlt · Frist war ${fmtShort(o.deadline)}</span>`;
   else if (!o.myChoice && o.deadline) line = `<span class="ev-line">Rückmeldung bis ${fmtShort(o.deadline)}</span>`;
-  const underLine = under.length ? `<span class="ev-line warn">Unterbesetzt: ${under.map(([v, n]) => `${v} ${n}`).join(" · ")}</span>` : "";
+  const underLine = under.length ? `<span class="ev-line warn">Unterbesetzt: ${under.map(([v]) => v).join(", ")}</span>` : "";
   const ch = CHOICES.find(c => c.key === o.myChoice);
   return `<li><button class="row gutter${o.weekly ? " weekly" : ""}${over ? " overdue" : ""}${del ? " deleted" : ""}" data-act="event" data-key="${esc(o.key)}" ${cur}>
     <span class="ev-date"><small>${WD[wdOf(o.date)]}</small><b>${o.date.slice(8, 10)}.${o.date.slice(5, 7)}.</b></span>
