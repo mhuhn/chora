@@ -20,7 +20,7 @@ Die installierte App arbeitet mit den echten Daten. Mit `?demo` hinter der Adres
      "user_roles": {{organization_membership.roles}}
    }
    ```
-   Unter Roles „Multiple Roles“ aktivieren und die Rollen `mitgliedsverwalter`, `aufgabenverwalter`, `aufgabenchecker` anlegen. E-Mail/Passwort-Anmeldung und E-Mail-Bestätigung einschalten.
+   Unter Roles „Multiple Roles“ aktivieren und die Rollen `mitgliedsverwalter`, `aufgabenverwalter`, `aufgabenchecker`, `terminverwalter` anlegen. E-Mail/Passwort-Anmeldung und E-Mail-Bestätigung einschalten.
 2. **Supabase → Edge Functions → Secrets**: `WORKOS_API_KEY` = WorkOS API-Key (`sk_…`). Optional: `WORKOS_DEFAULT_ROLE`, falls die Standardrolle eurer Organisation nicht `member` heißt.
 3. Der ersten Person im WorkOS-Dashboard die Rolle `mitgliedsverwalter` geben. Alles Weitere geht danach in der App.
 
@@ -59,7 +59,7 @@ Das Backend gibt der App nach erfolgreicher Anmeldung eine Session (z. B. HttpOn
 ## Rollen in WorkOS
 
 - Einen Chor als **Organization** anlegen, jedes Mitglied hat dort eine Organization Membership.
-- Im WorkOS-Dashboard die Rollen `mitgliedsverwalter`, `aufgabenverwalter`, `aufgabenchecker` anlegen und **Multiple Roles** aktivieren (sonst nur eine Rolle pro Membership).
+- Im WorkOS-Dashboard die Rollen `mitgliedsverwalter`, `aufgabenverwalter`, `aufgabenchecker`, `terminverwalter` anlegen und **Multiple Roles** aktivieren (sonst nur eine Rolle pro Membership).
 - Die App blendet Funktionen nur aus. Die eigentliche Prüfung muss das Backend machen.
 
 ## Punkte und Level

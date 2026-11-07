@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.12.1";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.13.0";</script>
 </head>
 <body>
 <style>
@@ -566,7 +566,8 @@ const CHOR_ID_RE = /^(B|T|A1|A2|S1|S2)-\p{L}+(?:-\p{L}+)*$/u;
 const ROLES = [
   { key: "mitgliedsverwalter", label: "Mitgliedsverwalter", hint: "Sieht alle Angaben, aktiviert Mitglieder, vergibt Rollen" },
   { key: "aufgabenverwalter", label: "Aufgabenverwalter", hint: "Bearbeitet Aufgaben" },
-  { key: "aufgabenchecker", label: "Aufgabenchecker", hint: "Bestätigt erledigte Aufgaben" }
+  { key: "aufgabenchecker", label: "Aufgabenchecker", hint: "Bestätigt erledigte Aufgaben" },
+  { key: "terminverwalter", label: "Terminverwalter", hint: "Legt Termine an, bearbeitet und löscht sie" }
 ];
 const LEVELS = [
   { name: "Gast", min: 0, cls: "gast" }, { name: "Mitglied", min: 20, cls: "mitglied" },
@@ -777,7 +778,7 @@ function seed() {
     m("Johanna", "Schulz", "A1", "A1-Johanna", 30, 21), m("Katrin", "Hoffmann", "A2", "A2-Katrin", 45, 30, ["aufgabenverwalter"]),
     m("Ute", "Lehmann", "A2", "A2-Ute", 20, 8, [], false), m("Jonas", "Fischer", "T", "T-Jonas", 32, 32, ["aufgabenchecker"]),
     m("Paul", "Richter", "T", "T-Paul", 22, 10), m("Felix", "Wolf", "T", "T-Felix", 15, 3),
-    m("Thomas", "Braun", "B", "B-Thomas", 50, 41, ["mitgliedsverwalter", "aufgabenchecker"]), m("Martin", "Zimmermann", "B", "B-Martin", 28, 20),
+    m("Thomas", "Braun", "B", "B-Thomas", 50, 41, ["mitgliedsverwalter", "aufgabenchecker", "terminverwalter"]), m("Martin", "Zimmermann", "B", "B-Martin", 28, 20),
     m("Stefan", "Hartmann", "B", "B-Stefan", 12, 0, [], false), m("Elena", "Schröder", "U", "", 10, 4),
     m("Lena", "Vogel", "S1", "S1-Lena", 24, 18), m("Paula", "Roth", "S1", "S1-Paula", 30, 22), m("Greta", "Lange", "S2", "S2-Greta", 20, 20),
     m("Nina", "Kaiser", "S2", "S2-Nina", 16, 9), m("Ruth", "Peters", "A1", "A1-Ruth", 35, 30), m("Hanna", "Busch", "A1", "A1-Hanna", 22, 12),
@@ -828,7 +829,7 @@ function seed() {
     { key: e3key, by: "m-A1-Ruth", from: "ifneeded", to: "maybe", reason: "Kinderbetreuung ist noch nicht geklärt.", at: ago(5) }
   ];
   const eventExceptions = { [`e1|${dAdd(nextTue, 14)}`]: { deletedAt: ago(20), deletedBy: "m-B-Thomas" } };
-  return { v: 12, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
+  return { v: 13, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
     eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
@@ -882,7 +883,7 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v12";
+const KEY = "chora.v13";
 let DB;
 function loadDB() {
   try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 12) return d; } } catch (e) {}
@@ -1062,6 +1063,7 @@ const Api = {
   eventCategories() { return DB.eventCategories || []; },
   async addEvent(d) {
     await wait();
+    if (!can("terminverwalter")) throw new ApiError("forbidden", "Termine anlegen kann nur die Terminverwaltung.");
     const e = { id: "e" + Date.now().toString(36), ...d, createdBy: myKey(), turnout: null };
     DB.events.push(e); saveDB();
     return e.id;
@@ -1070,21 +1072,21 @@ const Api = {
     await wait();
     const e = DB.events.find(x => x.id === id);
     if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
-    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Bearbeiten kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    if (!can("terminverwalter")) throw new ApiError("forbidden", "Termine bearbeiten kann nur die Terminverwaltung.");
     Object.assign(e, d, { deadlineDate: d.deadlineKind === "date" ? d.deadlineDate : null }); saveDB();
   },
   async deleteEvent(id) {
     await wait();
     const e = DB.events.find(x => x.id === id);
     if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
-    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Löschen kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    if (!can("terminverwalter")) throw new ApiError("forbidden", "Termine löschen kann nur die Terminverwaltung.");
     e.deletedAt = new Date().toISOString(); e.deletedBy = myKey(); saveDB();
   },
   async deleteEventOccurrence(id, occ) {
     await wait();
     const e = DB.events.find(x => x.id === id);
     if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
-    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Löschen kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    if (!can("terminverwalter")) throw new ApiError("forbidden", "Termine löschen kann nur die Terminverwaltung.");
     DB.eventExceptions = DB.eventExceptions || {};
     DB.eventExceptions[`${id}|${occ}`] = { deletedAt: new Date().toISOString(), deletedBy: myKey() }; saveDB();
   },
@@ -1253,8 +1255,8 @@ function mockEvents() {
         location: e.location || "", directions: e.directions || "", category: e.category, weekly: !!e.weekly, deadlineKind: e.deadlineKind,
         deadline: eventDeadline(e.deadlineKind, e.deadlineDate, occ), deletedAt: e.deletedAt || (ex && ex.deletedAt) || null,
         deletedScope: e.deletedAt ? "series" : ex ? "single" : null,
-        lateChanges: can("mitgliedsverwalter") ? lateFor(key, votes) : null,
-        creator: Api.periodChorId({ by: e.createdBy }), canDelete: e.createdBy === myKey() || can("mitgliedsverwalter"),
+        lateChanges: can("terminverwalter") ? lateFor(key, votes) : null,
+        creator: Api.periodChorId({ by: e.createdBy }), canDelete: can("terminverwalter"),
         myChoice: votes[myKey()] || null, staffing });
     });
   });
@@ -1662,7 +1664,7 @@ function viewApp() {
   const tab = TABS.find(t => t.key === S.tab);
   const pending = can("aufgabenchecker") ? Api.pendingReports().filter(r => !r.own).length : 0;
   const overdue = Api.events().filter(evOverdue).length;
-  const evNew = S.tab === "events" && S.evNew;
+  const evNew = S.tab === "events" && S.evNew && can("terminverwalter");
   const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
@@ -1672,7 +1674,7 @@ function viewApp() {
   const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew && !cats
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
        <button class="btn btn-primary btn-sm" data-act="new-task" aria-label="Neue Aufgabe">${I.plus}<span class="hide-narrow">Neue Aufgabe</span><span class="show-narrow">Neu</span></button>`
-    : S.tab === "events" && !narrowDetail && !evNew
+    : S.tab === "events" && can("terminverwalter") && !narrowDetail && !evNew
       ? `<button class="btn btn-primary btn-sm" data-act="new-event" aria-label="Termin hinzufügen">${I.plus}<span class="hide-narrow">Termin hinzufügen</span><span class="show-narrow">Neu</span></button>` : "";
   let content = "";
   if (S.tab === "tasks") content = tasksView();
@@ -2209,7 +2211,7 @@ function eventsView() {
   if (S.evKey && !Api.events().some(o => o.key === S.evKey)) S.evKey = null;
   if (wide() && !S.evKey && !S.evNew && list.length) S.evKey = list[0].key;
   const o = Api.events().find(x => x.key === S.evKey);
-  const detail = S.evNew ? eventForm(null) : o && S.evEdit === o.id && o.canDelete ? eventForm(o) : o ? eventDetail(o) : "";
+  const detail = S.evNew && can("terminverwalter") ? eventForm(null) : o && S.evEdit === o.id && o.canDelete ? eventForm(o) : o ? eventDetail(o) : "";
   if (!wide() && (S.evKey || S.evNew)) return `<div class="pane">${detail}</div>`;
   return `<div class="split">
     <div class="list-pane" id="list-pane">
@@ -2237,7 +2239,7 @@ function eventDetail(o) {
       ${S.lateVote && S.lateVote.key === o.key ? lateForm(o) : ""}
       ${o.weekly ? `<p class="cta-note" style="text-align:left;margin:0">Gilt nur für den ${fmtDate(o.date)}.</p>` : ""}
     </section>`;
-  const late = can("mitgliedsverwalter") && passed && !del && o.lateChanges && o.lateChanges.length ? `<section style="display:grid;gap:8px">
+  const late = can("terminverwalter") && passed && !del && o.lateChanges && o.lateChanges.length ? `<section style="display:grid;gap:8px">
       <h3 class="h3">Nachträgliche Absagen <span class="num" style="color:var(--muted);font-weight:600">${o.lateChanges.length}</span></h3>
       <ul class="late-list">${o.lateChanges.map(l => `<li>
         <div class="late-head"><b>${l.chorId ? esc(l.chorId) : "ohne Chor-ID"}</b><span class="row-sub">${esc(l.firstName)} ${esc(l.lastName)}</span>
