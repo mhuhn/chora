@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.9.1";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.0";</script>
 </head>
 <body>
 <style>
@@ -432,6 +432,18 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .dot-row { display: contents; }
 .dot-row.single .dots { grid-column: 1 / -1; }
 .dot-label { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.claims-now { display: grid; gap: 8px; }
+.claim-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.claim-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.claim-list .cid { font-weight: 650; }
+.claim-list .row-sub { font-variant-numeric: tabular-nums; }
+.mclaim { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; }
+.mclaim:hover { background: var(--surface-2); }
+.mclaim b { font-weight: 650; overflow-wrap: anywhere; }
+.mclaim .row-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.check-pts.pending { color: var(--muted); }
+.check .note { grid-column: 1 / -1; font-size: 14px; color: var(--orange-ink); overflow-wrap: anywhere; }
+.points .chips { margin-bottom: 4px; }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -521,6 +533,7 @@ const P = n => `${n}p`;   // virtuelle Währung
 const LEN = { M: 1, Q: 3, J: 12, J3: 36 };
 const STEP = { M: 1, Q: 3, J: 12, J3: 12 };       // Raster der wählbaren Starts
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const MONTHS_LONG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const mIdx = iso => { const [y, m] = String(iso).split("-").map(Number); return y * 12 + m - 1; };
 const mIso = i => `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}-01`;
 const nowIdx = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
@@ -600,6 +613,7 @@ function segments(t, year) {
   });
   return out;
 }
+function claimRange(p, iv) { const e = effEnd(p, iv); return e == null ? `ab ${unitLabel(p.start, iv)}` : rangeLabel(p.start, e, iv); }
 const allReported = (c, iv) => { const e = effEnd(c, iv); return e != null && reportStart(c, iv) > e; };
 const askKeep = (c, iv, e) => { const eff = effEnd(c, iv); return iv !== "J3" && (eff == null || e < eff); };
 function reportStart(c, iv) { return c.doneUntil != null ? c.doneUntil + LEN[iv] : c.start; }
@@ -619,14 +633,33 @@ function seed() {
     t08: "Podeste, Stühle und Notenpulte vor dem Konzert aufbauen und danach wieder abbauen.",
     t18: "Einen Kuchen oder etwas Herzhaftes für die Probenpause mitbringen."
   };
-  const PERIODS = {   // Beispiel mit wechselnder Belegung
-    t02: [{ start: mIdx("2026-01"), end: null, by: "seed" }, { start: mIdx("2026-01"), end: null, by: "seed" },
-          { start: mIdx("2026-01"), end: mIdx("2026-11"), by: "seed" }, { start: mIdx("2027-02"), end: mIdx("2027-04"), by: "seed" }]
+  // Übernahmen mit Person und Zeitraum (Ende inklusive, null = ohne Ende)
+  const cl = (chor, from, to = null) => ({ start: mIdx(from), end: to ? mIdx(to) : null, by: "m-" + chor });
+  const PERIODS = {
+    t01: [cl("S1-Anna", "2026-01"), cl("A1-Johanna", "2026-09", "2027-02"), cl("T-Felix", "2026-11", "2026-12"), cl("T-Paul", "2027-03", "2027-08")],
+    t02: [cl("B-Thomas", "2026-01"), cl("B-Martin", "2026-01"), cl("S2-Clara", "2026-01", "2026-11"), cl("S1-Sophie", "2027-02", "2027-04")],
+    t03: [cl("T-Jonas", "2026-01"), cl("B-Thomas", "2026-01", "2026-12"), cl("A2-Katrin", "2026-04"), cl("S2-Clara", "2027-01", "2027-06")],
+    t04: [cl("T-Jonas", "2026-01"), cl("T-Paul", "2026-01"), cl("B-Martin", "2026-03", "2027-06"), cl("T-Felix", "2026-10", "2026-12"),
+          cl("B-Stefan", "2026-01", "2026-12"), cl("S2-Marie-Luise", "2027-01", "2027-03")],
+    t06: [cl("S1-Sophie", "2026-07", "2026-10"), cl("S2-Clara", "2027-01"), cl("A1-Johanna", "2027-04", "2027-07")],
+    t08: [cl("B-Thomas", "2026-01"), cl("T-Jonas", "2026-01"), cl("B-Martin", "2026-01"), cl("A2-Katrin", "2026-01", "2026-10"),
+          cl("T-Paul", "2026-04"), cl("S1-Anna", "2027-01", "2027-07")],
+    t09: [cl("S2-Marie-Luise", "2026-10", "2027-01"), cl("A1-Johanna", "2026-01"), cl("T-Felix", "2027-04", "2027-10")],
+    t10: [cl("T-Paul", "2026-07"), cl("T-Felix", "2026-10", "2027-01"), cl("S2-Clara", "2027-04", "2027-10")],
+    t15: [cl("A2-Katrin", "2026-01"), cl("S1-Sophie", "2026-10", "2027-04")],
+    t17: [cl("S1-Anna", "2026-10", "2027-01"), cl("B-Martin", "2027-04")],
+    t18: [cl("S1-Anna", "2026-01"), cl("S1-Sophie", "2026-09", "2026-12"), cl("S2-Clara", "2026-01"), cl("S2-Marie-Luise", "2026-11", "2027-02"),
+          cl("A1-Johanna", "2026-01"), cl("A2-Katrin", "2027-01", "2027-06"), cl("B-Thomas", "2026-01"), cl("ElenaSchröder", "2026-05")]
   };
-  const t = (id, title, cat, iv, pts, total, taken, from, to) =>
-    ({ id, title, description: DESC[id] || "", category: cat, interval: iv, points: pts,
-       min: Math.max(1, Math.ceil(total / 2)), total, validFrom: from, validTo: to,
-       periods: PERIODS[id] || Array.from({ length: taken }, () => ({ start: mIdx("2026-01"), end: null, by: "seed" })) });
+  const ROT = ["S1-Anna", "T-Jonas", "A1-Johanna", "B-Martin", "S2-Clara", "T-Paul", "S1-Sophie", "B-Thomas", "S2-Marie-Luise", "A2-Katrin", "T-Felix", "ElenaSchröder"];
+  let k = 0;
+  const t = (id, title, cat, iv, pts, total, taken, from, to) => {
+    k++;
+    const start = (from || "2026-01-01").slice(0, 7);
+    return { id, title, description: DESC[id] || "", category: cat, interval: iv, points: pts,
+      min: Math.max(1, Math.ceil(total / 2)), total, validFrom: from, validTo: to,
+      periods: PERIODS[id] || Array.from({ length: taken }, (_, i) => cl(ROT[(k * 3 + i) % ROT.length], start)) };
+  };
   const tasks = [
     t("t01", "Einsingen anleiten", "Proben", "M", 6, 4, 2, "2026-01-01", "2027-12-31"),
     t("t02", "Stimmprobe leiten", "Proben", "M", 12, 6, 3, "2026-01-01", "2027-12-31"),
@@ -674,7 +707,7 @@ function seed() {
     { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5 },
     { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 15 }
   ];
-  return { v: 7, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  return { v: 8, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
@@ -692,6 +725,19 @@ function demoUsers() {
         { taskId: "t18", date: "2026-10-28", points: 3, checker: "A2-Katrin", periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), interval: "M" },
         { taskId: "t01", date: "2026-10-14", points: 6, checker: "B-Thomas", periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), interval: "M" },
         { taskId: "t18", date: "2026-09-09", points: 3, checker: "S1-Anna", periodStart: mIdx("2026-09"), periodEnd: mIdx("2026-09"), interval: "M" }
+      ]
+    },
+    checker: {
+      id: "u-demo3", email: "mara@chora.app", verified: true, active: true, roles: ["aufgabenchecker"], memberSince: "2020-02-01",
+      reports: [{ taskId: "t04", date: "2026-11-05", status: "reported", periodStart: mIdx("2026-10"), periodEnd: mIdx("2026-10"), points: 3, keep: true }],
+      profile: { firstName: "Mara", lastName: "Klein", voice: "S2", chorId: "S2-Mara" },
+      claims: ["t04", "t12"],
+      claimInfo: {
+        t04: { start: mIdx("2026-08"), end: mIdx("2026-12"), doneUntil: mIdx("2026-09") },
+        t12: { start: mIdx("2026-10"), end: null, doneUntil: null }
+      },
+      checks: [
+        { taskId: "t04", date: "2026-10-03", points: 6, checker: "T-Jonas", periodStart: mIdx("2026-08"), periodEnd: mIdx("2026-09"), interval: "M" }
       ]
     },
     member: {
@@ -714,10 +760,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v7";
+const KEY = "chora.v8";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 7) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 8) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -876,6 +922,20 @@ const Api = {
     t.periods = t.periods.filter(p => p.by !== myKey());
     u.claims = u.claims.filter(x => x !== id); saveDB();
   },
+  // Chor-ID der Person hinter einer Übernahme (inaktive nur für Mitgliedsverwalter)
+  periodChorId(p) {
+    if (p.chorId !== undefined) return p.chorId;
+    if (String(p.by).startsWith("u:")) { const o = DB.users[p.by.slice(2)]; return o && o.profile ? o.profile.chorId : ""; }
+    const m = DB.members.find(x => x.id === p.by);
+    return m && (m.active || can("mitgliedsverwalter")) ? m.chorId : "";
+  },
+  periodMine(p) { return p.mine !== undefined ? p.mine : p.by === myKey(); },
+  myReports() {
+    return DB.reports.filter(r => r.by === myKey()).map(r => {
+      const t = DB.tasks.find(x => x.id === r.taskId) || {};
+      return { ...r, title: t.title, interval: t.interval };
+    });
+  },
   myClaim(id) {
     const u = me(), t = DB.tasks.find(x => x.id === id);
     const c = u && u.claimInfo && u.claimInfo[id];
@@ -960,10 +1020,13 @@ const Api = {
       const p = Api.pointsOf(u);
       list.push({ id: "me", me: true, ...u.profile, committed: p.committed, collected: p.collected, level: levelOf(p.committed + p.collected).name, roles: [...(u.roles || [])], active: u.active !== false, since: u.memberSince || todayISO() });
     }
-    if (admin) return list.sort((a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de"));
+    // Aufgabenchecker sehen die laufenden und kommenden Übernahmen jedes Mitglieds
+    if (can("aufgabenchecker")) list.forEach(m => { m.claims = mockClaims(m.me ? myKey() : m.id); });
+    const byCid = (a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de");
+    if (admin) return list.sort(byCid);
     return list.filter(m => m.active)
-      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice, level: m.level }))
-      .sort((a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de"));
+      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice, level: m.level, claims: m.claims }))
+      .sort(byCid);
   },
   // PUT {apiBase}/members/:id/active → Backend: WorkOS deactivate/reactivate organization membership
   async setActive(id, active) {
@@ -983,6 +1046,15 @@ const Api = {
     target.roles = ROLES.map(r => r.key).filter(k => set.has(k)); saveDB();
   }
 };
+
+function mockClaims(by) {
+  return DB.tasks.flatMap(t => (t.periods || []).filter(p => p.by === by && claimActive(p, t.interval)).map(p => {
+    const own = String(by).startsWith("u:") ? ((DB.users[by.slice(2)] || {}).claimInfo || {})[t.id] : null;
+    const r = DB.reports.find(x => x.by === by && x.taskId === t.id);
+    return { taskId: t.id, title: t.title, interval: t.interval, points: t.points, start: p.start, end: p.end,
+      doneUntil: own ? own.doneUntil : null, report: r ? r.status : null };
+  })).sort((a, b) => a.start - b.start || a.title.localeCompare(b.title, "de"));
+}
 
 /* =====================================================================
    Echte Daten: Supabase (Datenbank) + Edge Functions (WorkOS-Anmeldung)
@@ -1059,7 +1131,7 @@ async function reload() {
   CACHE.categories = (cats || []).map(c => c.name).sort((a, b) => a.localeCompare(b, "de"));
   DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
     interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max,
-    periods: (t.occupancy || []).map(([a, b]) => ({ start: mIdx(a), end: b ? mIdx(b) : null })),
+    periods: (t.occupancy || []).map(([a, b, cid, mine]) => ({ start: mIdx(a), end: b ? mIdx(b) : null, chorId: cid || "", mine: !!mine })),
     validFrom: t.valid_from, validTo: t.valid_to }));
   CACHE.reports = {}; CACHE.lastCheck = {}; CACHE.claims = {};
   const ix = d => (d ? mIdx(d) : null);
@@ -1071,7 +1143,9 @@ async function reload() {
     if (t.last_checked_on) CACHE.lastCheck[t.id] = { date: t.last_checked_on, checker: t.last_checker || "" };
   });
   CACHE.points = points;
-  CACHE.members = (members || []).map(x => ({ ...x, voice: x.voice || "U", chorId: x.chorId || "", roles: x.roles || [] }));
+  CACHE.members = (members || []).map(x => ({ ...x, voice: x.voice || "U", chorId: x.chorId || "", roles: x.roles || [],
+    claims: x.claims ? x.claims.map(c => ({ taskId: c.taskId, title: c.title, interval: c.period, points: c.points,
+      start: mIdx(c.start), end: c.end ? mIdx(c.end) : null, doneUntil: c.doneUntil ? mIdx(c.doneUntil) : null, report: c.report })) : undefined }));
   CACHE.pending = (pending || []).map(r => ({ id: r.id, date: isoLocal(r.reported_at), task: { title: r.task_title, points: r.points },
     interval: r.task_period, periodStart: ix(r.period_start), periodEnd: ix(r.period_end),
     reporter: { chorId: r.reporter_chor_id || "", voice: r.reporter_voice || "U" }, own: r.own }));
@@ -1147,6 +1221,12 @@ const RealApi = {
   async deleteCategory(name) { await Remote.rpc("delete_category", { p_name: name }); await reload(); },
   myReport(taskId) { return CACHE.reports[taskId]; },
   myClaim(taskId) { return CACHE.claims[taskId]; },
+  myReports() {
+    return Object.entries(CACHE.reports).map(([taskId, r]) => {
+      const t = DB.tasks.find(x => x.id === taskId) || {};
+      return { ...r, taskId, title: t.title, interval: t.interval };
+    });
+  },
   pendingReports() { return CACHE.pending; },
   members() { return CACHE.members; },
   pointsOf() {
@@ -1197,7 +1277,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all"
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1246,7 +1326,7 @@ function viewLogin() {
       ${submitBtn(reg ? "Konto erstellen" : "Anmelden")}
     </form>
     ${reg ? `<p class="auth-text" style="font-size:14px">Danach schicken wir dir einen Code, mit dem du deine E-Mail-Adresse bestätigst.</p>` : ""}
-    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
+    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button>, <button class="link" type="button" data-act="demo" data-kind="checker">Aufgabenchecker</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
 }
 
 function viewVerify() {
@@ -1483,6 +1563,17 @@ function taskDetail(t) {
   const multi = segs.length > 1;
   const dots = t.total <= 50 && segs.length ? `<div class="dot-rows">${segs.map(sg => `<div class="dot-row${multi ? "" : " single"}">
       ${multi ? `<span class="dot-label">${shortRange(sg.from, sg.to, t.interval)}</span>` : ""}${dotLine(sg)}</div>`).join("")}</div>` : "";
+  const nowI = nowIdx();
+  const active = (t.periods || []).filter(p => claimActive(p, t.interval))
+    .sort((a, b) => a.start - b.start || (Api.periodChorId(a) || "~").localeCompare(Api.periodChorId(b) || "~", "de"));
+  const cidOf = p => (Api.periodChorId(p) ? esc(Api.periodChorId(p)) : '<span style="color:var(--muted)">ohne Chor-ID</span>');
+  const duTag = p => (Api.periodMine(p) ? '<span class="mine-dot">DU</span>' : "");
+  const nowList = active.filter(p => covers(p, t.interval, nowI));
+  const nowBox = `<section class="claims-now"><h3 class="h3">Im ${MONTHS_LONG[nowI % 12]} ${Math.floor(nowI / 12)} übernommen von</h3>
+    ${nowList.length ? `<div class="role-list">${nowList.map(p => `<span class="badge">${cidOf(p)}</span>${duTag(p)}`).join("")}</div>` : '<p class="cta-note" style="text-align:left;margin:0">Noch niemand.</p>'}</section>`;
+  const claimBox = `<section class="claims-now"><h3 class="h3">Übernahmen <span class="num" style="color:var(--muted);font-weight:600">${active.length}</span></h3>
+    ${active.length ? `<ul class="claim-list">${active.map(p => `<li><span><span class="cid">${cidOf(p)}</span>${duTag(p)}</span><span class="row-sub">${claimRange(p, t.interval)}</span></li>`).join("")}</ul>`
+      : '<p class="cta-note" style="text-align:left;margin:0">Noch keine Übernahmen.</p>'}</section>`;
   const below = (t.min || 0) - n;
   const yearTxt = yearChoices().length > 1 ? ` (${year})` : "";
   const seatCap = (multi ? `Plätze vergeben je Zeitraum${yearTxt}, höchstens ${t.total}` : `${n} von ${t.total} Plätzen vergeben${yearTxt}`)
@@ -1494,11 +1585,13 @@ function taskDetail(t) {
       ${t.description ? `<p class="task-desc">${esc(t.description)}</p>` : ""}</div>
     <div class="scope"><b>${P(t.points)}</b><span>pro ${INTERVALS[t.interval]}</span></div>
     <div style="display:grid;gap:8px">${dots}<div class="dots-cap num">${seatCap}</div></div>
+    ${nowBox}
     ${t.validFrom || t.validTo ? `<dl class="props">
       ${t.validFrom ? `<div><dt>Gültig ab</dt><dd>${fmtDate(t.validFrom)}</dd></div>` : ""}
       ${t.validTo ? `<div><dt>Gültig bis</dt><dd>${fmtDate(t.validTo)}</dd></div>` : ""}
     </dl>` : ""}
     <div class="cta">${btn}<p class="cta-note">${note}</p></div>
+    ${claimBox}
   </article>`;
 }
 
@@ -1640,7 +1733,10 @@ function categoriesView() {
 /* ---------- Punkte ---------- */
 function pointsView() {
   const u = me(), p = Api.pointsOf(u), sum = p.committed + p.collected, lv = levelOf(sum);
-  const checks = [...u.checks].sort((a, b) => b.date.localeCompare(a.date));
+  const checks = u.checks.map(c => ({ ...c, kind: "done" }));
+  const open = Api.myReports().filter(r => r.status === "reported" || r.status === "rejected").map(r => ({ ...r, kind: r.status }));
+  const pf = S.pf || "all";
+  const entries = (pf === "open" ? open : pf === "done" ? checks : [...open, ...checks]).sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const scale = 50, pos = v => Math.min(100, v / scale * 100);
   return `<div class="pane"><div class="points gutter">
     <section class="points-sum" aria-label="Übersicht">
@@ -1663,12 +1759,23 @@ function pointsView() {
       ${!u.claims.length ? `<button class="btn btn-secondary" data-act="tab" data-tab="tasks">${I.tasks}Aufgaben ansehen</button>` : ""}
     </section>
     <section style="min-width:0">
-      <div class="section-h"><h2>Aufgabenchecks</h2><span class="num">${checks.length}</span></div>
-      ${checks.length ? `<ul class="rows">${checks.map(c => {
+      <div class="section-h"><h2>Aufgabenchecks</h2><span class="num">${entries.length}</span></div>
+      <div class="chips" role="group" aria-label="Aufgabenchecks filtern">
+        <button class="chip" data-act="pf" data-v="all" aria-pressed="${pf === "all"}">Alle</button>
+        <button class="chip" data-act="pf" data-v="open" aria-pressed="${pf === "open"}">Unbestätigt (${open.length})</button>
+        <button class="chip" data-act="pf" data-v="done" aria-pressed="${pf === "done"}">Bestätigt (${checks.length})</button>
+      </div>
+      ${entries.length ? `<ul class="rows">${entries.map(c => {
         const t = DB.tasks.find(x => x.id === c.taskId);
-        return `<li class="check"><span class="check-title">${esc(c.title || (t ? t.title : "Aufgabe"))}</span><span class="check-pts">+${P(c.points)}</span>
-          <span class="check-meta">${c.periodStart != null && c.interval ? `<span>${rangeLabel(c.periodStart, c.periodEnd, c.interval)}</span>` : ""}<span class="num">${fmtDate(c.date)}</span><span class="checker">${I.stamp}bestätigt von <span class="badge">${esc(c.checker)}</span></span></span></li>`;
-      }).join("")}</ul>` : `<div class="empty" style="min-height:180px">${I.stamp}<div>Noch keine Aufgabenchecks.<br>Sobald jemand bestätigt, dass du eine Aufgabe erledigt hast, erscheint sie hier.</div></div>`}
+        const title = esc(c.title || (t ? t.title : "Aufgabe")), iv = c.interval || (t && t.interval);
+        const period = c.periodStart != null && iv ? `<span>${rangeLabel(c.periodStart, c.periodEnd, iv)}</span>` : "";
+        if (c.kind === "done") return `<li class="check"><span class="check-title">${title}</span><span class="check-pts">+${P(c.points)}</span>
+          <span class="check-meta">${period}<span class="num">${fmtDate(c.date)}</span><span class="checker">${I.stamp}bestätigt von <span class="badge">${esc(c.checker)}</span></span></span></li>`;
+        const rej = c.kind === "rejected";
+        return `<li class="check"><span class="check-title">${title}<span class="mine-dot ${rej ? "no" : "wait"}">${rej ? "ABGELEHNT" : "WARTET"}</span></span><span class="check-pts pending">${c.points ? "+" + P(c.points) : ""}</span>
+          <span class="check-meta">${period}<span>gemeldet am <span class="num">${fmtDate(c.date)}</span></span>${rej && c.checker ? `<span class="checker">abgelehnt von <span class="badge">${esc(c.checker)}</span></span>` : ""}</span>
+          ${rej && c.comment ? `<span class="note">„${esc(c.comment)}“</span>` : ""}</li>`;
+      }).join("")}</ul>` : `<div class="empty" style="min-height:180px">${I.stamp}<div>${pf === "open" ? "Keine unbestätigten Meldungen." : "Noch keine Aufgabenchecks.<br>Sobald jemand bestätigt, dass du eine Aufgabe erledigt hast, erscheint sie hier."}</div></div>`}
     </section>
   </div></div>`;
 }
@@ -1729,22 +1836,30 @@ function memberDetail(m) {
   if (!m) return `<div class="empty">${I.members}<div>Dieses Mitglied gibt es nicht mehr.</div></div>`;
   if (!can("mitgliedsverwalter")) {
     return `<article class="detail gutter">
-      <div class="person"><span class="avatar${m.me ? " me" : ""}">${m.voice === "U" ? "?" : m.voice}</span>
-        <div class="headline" style="gap:4px"><div class="eyebrow">${voiceLabel(m.voice)}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2></div></div>
-      <dl class="props">
-        <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
-        <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
-        <div><dt>Status</dt><dd>${lvTag(m.level)}</dd></div>
-      </dl>
+      <div class="headline" style="gap:6px"><div class="eyebrow">${voiceLabel(m.voice)}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
+        <div>${lvTag(m.level)}</div></div>
+      ${memberClaimsSection(m)}
       ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
     </article>`;
   }
   return S.memberEdit === m.id ? memberEditView(m) : memberReadView(m);
 }
 function memberHead(m, eyebrow) {
-  return `<div class="person"><span class="avatar${m.me ? " me" : ""}">${esc(initials(m))}</span>
-    <div class="headline" style="gap:4px"><div class="eyebrow">${eyebrow}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
-    <div class="row-sub">${esc(m.firstName)} ${esc(m.lastName)}</div></div></div>`;
+  return `<div class="headline" style="gap:4px"><div class="eyebrow">${eyebrow}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
+    <div class="row-sub">${esc(m.firstName)} ${esc(m.lastName)}</div></div>`;
+}
+// Für Aufgabenchecker: laufende und kommende Übernahmen des Mitglieds
+function memberClaimsSection(m) {
+  if (!can("aufgabenchecker") || !m.claims) return "";
+  const list = m.claims;
+  return `<section style="display:grid;gap:8px">
+    <h3 class="h3">Übernommene Aufgaben <span class="num" style="color:var(--muted);font-weight:600">${list.length}</span></h3>
+    ${list.length ? `<div style="border-top:1px solid var(--line)">${list.map(c => `<button class="mclaim" data-act="goto-task" data-id="${esc(c.taskId)}">
+        <b>${esc(c.title)}</b><span class="seats">${P(c.points)} pro ${INTERVALS[c.interval]}</span>
+        <span class="row-sub"><span>${claimRange(c, c.interval)}</span>${c.doneUntil != null ? `<span>bestätigt bis ${unitLabel(c.doneUntil, c.interval)}</span>` : ""}
+          ${c.report === "reported" ? '<span class="mine-dot wait">GEMELDET</span>' : c.report === "rejected" ? '<span class="mine-dot no">ABGELEHNT</span>' : ""}</span>
+      </button>`).join("")}</div>` : '<p class="cta-note" style="text-align:left;margin:0">Keine laufenden Übernahmen.</p>'}
+  </section>`;
 }
 function memberReadView(m) {
   const pct = m.committed ? Math.min(100, Math.round(m.collected / m.committed * 100)) : 0;
@@ -1759,14 +1874,11 @@ function memberReadView(m) {
     <div><div class="meter" role="img" aria-label="${pct} Prozent gesammelt"><i style="width:${pct}%"></i></div>
       <div class="meter-cap"><span>${pct} % der zugesagten Punkte</span><span>${lvTag(m.level)}</span></div></div>
     <dl class="props">
-      <div><dt>Vorname</dt><dd>${esc(m.firstName)}</dd></div>
-      <div><dt>Nachname</dt><dd>${esc(m.lastName)}</dd></div>
-      <div><dt>Chor-ID</dt><dd>${m.chorId ? esc(m.chorId) : "–"}</dd></div>
-      <div><dt>Stimmgruppe</dt><dd>${voiceLabel(m.voice)}</dd></div>
       <div><dt>Mitglied seit</dt><dd>${fmtDate(m.since)}</dd></div>
       <div><dt>Zugang</dt><dd>${m.active ? "aktiv" : "inaktiv"}</dd></div>
       <div style="grid-column:1/-1"><dt>Rollen</dt><dd>${roles.length ? `<span class="role-list">${roles.map(r => `<span class="badge">${esc(r)}</span>`).join("")}</span>` : "keine"}</dd></div>
     </dl>
+    ${memberClaimsSection(m)}
     <button class="btn btn-secondary" data-act="member-edit" data-id="${esc(m.id)}">${I.edit}Profil bearbeiten</button>
     ${m.me ? `<p class="cta-note" style="text-align:left;margin:0">Name, Stimmgruppe und Chor-ID änderst du im Reiter <button class="link" data-act="tab" data-tab="profile">Profil</button>.</p>` : ""}
   </article>`;
@@ -1925,6 +2037,8 @@ document.addEventListener("click", async e => {
   }
   if (a === "group") { S.group = el.dataset.g; if (wide()) S.taskId = null; return render(); }
   if (a === "year") { S.year = Number(el.dataset.y); return render(); }
+  if (a === "pf") { S.pf = el.dataset.v; return render(); }
+  if (a === "goto-task") { const id = el.dataset.id; setTab("tasks"); S.taskId = id; S.q = ""; S.onlyMine = false; render(); scrollDetailTop(); return; }
   if (a === "only-mine") { S.onlyMine = !S.onlyMine; if (wide()) S.taskId = null; return render(); }
   if (a === "done") { S.reporting = el.dataset.id; S.claiming = null; render(); return; }
   if (a === "undo-done") {
