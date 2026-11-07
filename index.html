@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.1";</script>
 </head>
 <body>
 <style>
@@ -636,10 +636,10 @@ function seed() {
   // Übernahmen mit Person und Zeitraum (Ende inklusive, null = ohne Ende)
   const cl = (chor, from, to = null) => ({ start: mIdx(from), end: to ? mIdx(to) : null, by: "m-" + chor });
   const PERIODS = {
-    t01: [cl("S1-Anna", "2026-01"), cl("A1-Johanna", "2026-09", "2027-02"), cl("T-Felix", "2026-11", "2026-12"), cl("T-Paul", "2027-03", "2027-08")],
+    t01: [cl("S1-Anna", "2026-01"), cl("A1-Johanna", "2026-09", "2027-02"), cl("T-Felix", "2026-11", "2026-11"), cl("T-Paul", "2027-03", "2027-08")],
     t02: [cl("B-Thomas", "2026-01"), cl("B-Martin", "2026-01"), cl("S2-Clara", "2026-01", "2026-11"), cl("S1-Sophie", "2027-02", "2027-04")],
-    t03: [cl("T-Jonas", "2026-01"), cl("B-Thomas", "2026-01", "2026-12"), cl("A2-Katrin", "2026-04"), cl("S2-Clara", "2027-01", "2027-06")],
-    t04: [cl("T-Jonas", "2026-01"), cl("T-Paul", "2026-01"), cl("B-Martin", "2026-03", "2027-06"), cl("T-Felix", "2026-10", "2026-12"),
+    t03: [cl("T-Jonas", "2026-01"), cl("B-Thomas", "2026-01", "2026-12"), cl("A2-Katrin", "2026-04"), cl("T-Paul", "2026-12"), cl("S2-Clara", "2027-01", "2027-06")],
+    t04: [cl("T-Jonas", "2026-01"), cl("T-Paul", "2026-01"), cl("B-Martin", "2026-03", "2027-06"), cl("T-Felix", "2026-10", "2026-11"),
           cl("B-Stefan", "2026-01", "2026-12"), cl("S2-Marie-Luise", "2027-01", "2027-03")],
     t06: [cl("S1-Sophie", "2026-07", "2026-10"), cl("S2-Clara", "2027-01"), cl("A1-Johanna", "2027-04", "2027-07")],
     t08: [cl("B-Thomas", "2026-01"), cl("T-Jonas", "2026-01"), cl("B-Martin", "2026-01"), cl("A2-Katrin", "2026-01", "2026-10"),
@@ -648,7 +648,7 @@ function seed() {
     t10: [cl("T-Paul", "2026-07"), cl("T-Felix", "2026-10", "2027-01"), cl("S2-Clara", "2027-04", "2027-10")],
     t15: [cl("A2-Katrin", "2026-01"), cl("S1-Sophie", "2026-10", "2027-04")],
     t17: [cl("S1-Anna", "2026-10", "2027-01"), cl("B-Martin", "2027-04")],
-    t18: [cl("S1-Anna", "2026-01"), cl("S1-Sophie", "2026-09", "2026-12"), cl("S2-Clara", "2026-01"), cl("S2-Marie-Luise", "2026-11", "2027-02"),
+    t18: [cl("S1-Anna", "2026-01"), cl("S1-Sophie", "2026-09", "2026-11"), cl("S2-Clara", "2026-01"), cl("S2-Marie-Luise", "2026-11", "2027-02"),
           cl("A1-Johanna", "2026-01"), cl("A2-Katrin", "2027-01", "2027-06"), cl("B-Thomas", "2026-01"), cl("ElenaSchröder", "2026-05")]
   };
   const ROT = ["S1-Anna", "T-Jonas", "A1-Johanna", "B-Martin", "S2-Clara", "T-Paul", "S1-Sophie", "B-Thomas", "S2-Marie-Luise", "A2-Katrin", "T-Felix", "ElenaSchröder"];
@@ -707,7 +707,7 @@ function seed() {
     { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5 },
     { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 15 }
   ];
-  return { v: 8, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  return { v: 9, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
@@ -760,10 +760,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v8";
+const KEY = "chora.v9";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 8) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 9) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
