@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.13.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.14.0";</script>
 </head>
 <body>
 <style>
@@ -105,6 +105,12 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .field { display: grid; gap: 6px; align-content: start; }
 .field label { font-size: 14px; font-weight: 600; }
 .field .hint { font-size: 13px; color: var(--muted); }
+.unit-input { display: flex; align-items: center; gap: 10px; }
+.unit-input .input { max-width: 120px; font-variant-numeric: tabular-nums; }
+.unit-input span { color: var(--muted); font-weight: 600; font-size: 14px; }
+.set-group { display: grid; gap: 12px; padding-top: 4px; }
+.set-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.set-three .unit-input .input { max-width: none; min-width: 0; }
 .field .err { font-size: 13px; color: var(--danger); font-weight: 600; }
 .input, .select {
   width: 100%; min-height: 48px; padding: 0 14px; border-radius: 12px;
@@ -573,6 +579,17 @@ const LEVELS = [
   { name: "Gast", min: 0, cls: "gast" }, { name: "Mitglied", min: 20, cls: "mitglied" },
   { name: "Silber", min: 30, cls: "silber" }, { name: "Gold", min: 40, cls: "gold" }
 ];
+// App-Einstellungen (Verwaltung: Rolle admin)
+const SET_DEFAULT = { levelMember: 20, levelSilver: 30, levelGold: 40, nextYearMonth: 9, monthDay: 6, quarterDay: 15 };
+const SET = { ...SET_DEFAULT };
+function applySettings(s) {
+  Object.assign(SET, s || {});
+  LEVELS[1].min = SET.levelMember; LEVELS[2].min = SET.levelSilver; LEVELS[3].min = SET.levelGold;
+}
+function dayOfQuarter(d) {
+  const qs = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
+  return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - qs) / 864e5) + 1;
+}
 function levelOf(sum) {
   let i = LEVELS.length - 1;
   while (i > 0 && sum < LEVELS[i].min) i--;
@@ -605,14 +622,14 @@ function unitCount(a, b, iv) { return iv === "J3" ? 1 : (b - a) / LEN[iv] + 1; }
 function unitWord(n, iv) {
   return { M: ["Monat", "Monate"], Q: ["Quartal", "Quartale"], J: ["Jahr", "Jahre"], J3: ["3-Jahres-Zeitraum", "3-Jahres-Zeiträume"] }[iv][n === 1 ? 0 : 1];
 }
-// Wählbare Starts: Monat bis zum 6. noch aktuell, Quartal bis zum 15. des ersten Monats,
-// Jahr/3 Jahre: aktuelles Jahr bis Dezember, ab September auch das Folgejahr
+// Wählbare Starts: Monat bis zum SET.monthDay. noch aktuell, Quartal bis zum SET.quarterDay. Tag des Quartals,
+// Jahr: aktuelles Jahr bis Dezember, ab Monat SET.nextYearMonth auch das Folgejahr
 function startOptions(t) {
   const d = new Date(), now = nowIdx(), iv = t.interval;
   let first, last;
-  if (iv === "M") { first = d.getDate() <= 6 ? now : now + 1; last = first + 11; }
-  else if (iv === "Q") { const q = unitOf(now, "Q"); first = (now === q && d.getDate() <= 15) ? q : q + 3; last = first + 21; }
-  else { first = now - (now % 12); last = d.getMonth() >= 8 ? first + 12 : first; }
+  if (iv === "M") { first = d.getDate() <= SET.monthDay ? now : now + 1; last = first + 11; }
+  else if (iv === "Q") { const q = unitOf(now, "Q"); first = dayOfQuarter(d) <= SET.quarterDay ? q : q + 3; last = first + 21; }
+  else { first = now - (now % 12); last = d.getMonth() + 1 >= SET.nextYearMonth ? first + 12 : first; }
   const lo = t.validFrom ? unitOf(mIdx(t.validFrom), iv === "J3" ? "J" : iv) : -Infinity, hi = t.validTo ? mIdx(t.validTo) : Infinity;
   const out = [];
   for (let i = first; i <= last; i += STEP[iv]) if (i >= lo && i <= hi) out.push(i);
@@ -644,8 +661,8 @@ function unitsInSeason(c, iv, season) {
 // Belegung: wie viele Übernahmen decken einen Monat / ein Quartal / ein Jahr ab?
 function covers(p, iv, u) { const e = effEnd(p, iv); return u >= p.start && (e == null || u < e + LEN[iv]); }
 function countAt(t, u) { return (t.periods || []).filter(p => covers(p, t.interval, u)).length; }
-// Ab September ist das Folgejahr wählbar
-function yearChoices() { const d = new Date(), y = d.getFullYear(); return d.getMonth() >= 8 ? [y, y + 1] : [y]; }
+// Ab dem eingestellten Monat (Standard September) ist das Folgejahr wählbar
+function yearChoices() { const d = new Date(), y = d.getFullYear(); return d.getMonth() + 1 >= SET.nextYearMonth ? [y, y + 1] : [y]; }
 function selYear() { const ys = yearChoices(); return ys.includes(S.year) ? S.year : ys[0]; }
 // Zukünftige Einheiten des Jahres (im laufenden Jahr ab der aktuellen Einheit)
 function yearUnits(iv, year) {
@@ -753,7 +770,7 @@ function seed() {
     t("t04", "Stühle und Klavier aufbauen", "Proben", "M", 3, 8, 5, "2026-01-01", "2027-12-31"),
     t("t05", "Notenwart", "Noten & Archiv", "J", 30, 2, 1, "2026-01-01", "2028-12-31"),
     t("t06", "Noten kopieren und verteilen", "Noten & Archiv", "Q", 8, 3, 1, "2026-01-01", "2027-12-31"),
-    t("t07", "Notenarchiv digitalisieren", "Noten & Archiv", "J3", 40, 2, 1, "2026-01-01", "2028-12-31"),
+    t("t07", "Notenarchiv digitalisieren", "Noten & Archiv", "J", 15, 2, 1, "2026-01-01", "2028-12-31"),
     t("t08", "Bühnenaufbau beim Konzert", "Konzerte", "Q", 10, 10, 6, "2026-01-01", "2027-12-31"),
     t("t09", "Abendkasse", "Konzerte", "Q", 8, 4, 2, "2026-01-01", "2027-12-31"),
     t("t10", "Plakate aufhängen", "Konzerte", "Q", 5, 6, 3, "2026-01-01", "2027-12-31"),
@@ -768,7 +785,7 @@ function seed() {
     t("t19", "Geburtstagskarten schreiben", "Gemeinschaft", "Q", 5, 2, 1, "2026-01-01", "2027-12-31"),
     t("t20", "Sommerfest organisieren", "Gemeinschaft", "J", 25, 4, 2, "2027-01-01", "2027-09-30"),
     t("t21", "Kassenprüfung", "Finanzen", "J", 20, 2, 2, "2026-01-01", "2027-12-31"),
-    t("t22", "Mitgliedsbeiträge verwalten", "Finanzen", "J3", 45, 1, 1, "2026-01-01", "2028-12-31")
+    t("t22", "Mitgliedsbeiträge verwalten", "Finanzen", "J", 15, 1, 1, "2026-01-01", "2028-12-31")
   ];
   const m = (first, last, voice, chorId, committed, collected, roles = [], active = true) =>
     ({ id: "m-" + (chorId || first + last), firstName: first, lastName: last, voice, chorId, committed, collected, roles, active });
@@ -829,13 +846,13 @@ function seed() {
     { key: e3key, by: "m-A1-Ruth", from: "ifneeded", to: "maybe", reason: "Kinderbetreuung ist noch nicht geklärt.", at: ago(5) }
   ];
   const eventExceptions = { [`e1|${dAdd(nextTue, 14)}`]: { deletedAt: ago(20), deletedBy: "m-B-Thomas" } };
-  return { v: 13, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
+  return { v: 14, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
     eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
     admin: {
-      id: "u-demo", email: "demo@chora.app", verified: true, active: true, roles: ROLES.map(r => r.key), memberSince: "2014-09-01",
+      id: "u-demo", email: "demo@chora.app", verified: true, active: true, roles: [...ROLES.map(r => r.key), "admin"], memberSince: "2014-09-01", carry: 4,
       reports: [{ taskId: "t19", date: "2026-11-04", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5, keep: true }],
       profile: { firstName: "Lea", lastName: "Sommer", voice: "A1", chorId: "A1-Lea" },
       claims: ["t18", "t01", "t19"],
@@ -883,14 +900,15 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v13";
+const KEY = "chora.v14";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 12) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 14) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
 DB = loadDB();
+if (CONFIG.mock) applySettings(DB.settings || SET_DEFAULT);
 
 /* =====================================================================
    API-Schicht. Im Mock-Modus wird alles lokal simuliert.
@@ -1060,6 +1078,22 @@ const Api = {
     });
   },
   events() { return mockEvents(); },
+  settings() { return { ...SET }; },
+  // PUT {apiBase}/settings – nur Rolle admin
+  async saveSettings(v) {
+    await wait();
+    if (!can("admin")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Admin.");
+    DB.settings = { ...v }; saveDB(); applySettings(v);
+  },
+  async restoreEvent(id, occ) {
+    await wait();
+    if (!can("terminverwalter")) throw new ApiError("forbidden", "Termine wiederherstellen kann nur die Terminverwaltung.");
+    const e = DB.events.find(x => x.id === id);
+    if (!e) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
+    if (occ && DB.eventExceptions && DB.eventExceptions[`${id}|${occ}`]) delete DB.eventExceptions[`${id}|${occ}`];
+    else e.deletedAt = null;
+    saveDB();
+  },
   eventCategories() { return DB.eventCategories || []; },
   async addEvent(d) {
     await wait();
@@ -1175,8 +1209,8 @@ const Api = {
       const t = DB.tasks.find(x => x.id === id);
       return t ? s + t.points * unitsInSeason(c, t.interval, season) : s;
     }, 0);
-    const collected = u.checks.reduce((s, c) => s + c.points, 0);
-    return { committed, collected, missing: Math.max(0, committed - collected) };
+    const carry = u.carry || 0, collected = carry + u.checks.reduce((s, c) => s + c.points, 0);
+    return { committed, collected, carry, missing: Math.max(0, committed - collected) };
   },
   // GET {apiBase}/members – das Backend liefert Namen, Punkte, Rollen und
   // inaktive Mitglieder nur an Mitgliedsverwalter aus.
@@ -1338,13 +1372,16 @@ async function reload() {
   const m = await Remote.rpc("get_me");
   if (!m) { CACHE.me = { profile: null, roles: [], claims: [], checks: [], email: S.email }; DB.tasks = []; return; }
   const roles = m.roles || [];
-  const [tasks, points, checks, members, pending, cats, events, evCats] = await Promise.all([
+  const [tasks, points, checks, members, pending, cats, events, evCats, settings] = await Promise.all([
     Remote.rpc("task_list"), Remote.rpc("my_points"), Remote.rpc("my_checks"), Remote.rpc("member_list"),
     roles.includes("aufgabenchecker") ? Remote.rpc("pending_reports") : Promise.resolve([]),
     Remote.rest("categories?select=name&order=name", "GET"),
     Remote.rpc("event_list"),
-    Remote.rest("event_categories?select=name&order=sort", "GET")
+    Remote.rest("event_categories?select=name&order=sort", "GET"),
+    Remote.rpc("get_settings")
   ]);
+  if (settings) applySettings({ levelMember: settings.level_member, levelSilver: settings.level_silver, levelGold: settings.level_gold,
+    nextYearMonth: settings.next_year_month, monthDay: settings.month_claim_day, quarterDay: settings.quarter_claim_day });
   CACHE.eventCats = (evCats || []).map(c => c.name);
   CACHE.events = (events || []).map(e => ({ key: `${e.id}|${e.occurrence}`, id: e.id, title: e.title, description: e.description || "",
     startsOn: e.starts_on, date: e.occurrence, time: e.start_time ? e.start_time.slice(0, 5) : "", location: e.location || "",
@@ -1461,6 +1498,12 @@ const RealApi = {
   async deleteEvent(id) { await Remote.rpc("delete_event", { p_event: id }); await reload(); },
   async voteEvent(id, occ, choice, reason) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice, p_reason: reason || null }); await reload(); },
   async deleteEventOccurrence(id, occ) { await Remote.rpc("delete_event_occurrence", { p_event: id, p_occurrence: occ }); await reload(); },
+  async restoreEvent(id, occ) { await Remote.rpc("restore_event", { p_event: id, p_occurrence: occ || null }); await reload(); },
+  async saveSettings(v) {
+    await Remote.rpc("save_settings", { p_level_member: v.levelMember, p_level_silver: v.levelSilver, p_level_gold: v.levelGold,
+      p_next_year_month: v.nextYearMonth, p_month_claim_day: v.monthDay, p_quarter_claim_day: v.quarterDay });
+    await reload();
+  },
   myReports() {
     return Object.entries(CACHE.reports).map(([taskId, r]) => {
       const t = DB.tasks.find(x => x.id === taskId) || {};
@@ -1471,7 +1514,7 @@ const RealApi = {
   members() { return CACHE.members; },
   pointsOf() {
     const p = CACHE.points || { collected: 0, committed: 0 };
-    return { committed: p.committed, collected: p.collected, missing: Math.max(0, p.committed - p.collected) };
+    return { committed: p.committed, collected: p.collected, carry: p.carry || 0, missing: Math.max(0, p.committed - p.collected) };
   }
 };
 if (!CONFIG.mock) Object.assign(Api, RealApi);
@@ -1491,6 +1534,7 @@ const wide = () => matchMedia("(min-width: 768px)").matches;
 const $ = s => document.querySelector(s);
 
 const I = {
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m9 11 1.6 1.6L14 9.5"/><path d="M9 16.5h6"/></svg>',
   points: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
   members: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="7" r="2.6"/><path d="M17.5 12.6c2.2.3 3.6 1.9 4 4.6"/></svg>',
@@ -1667,9 +1711,10 @@ function viewApp() {
   const evNew = S.tab === "events" && S.evNew && can("terminverwalter");
   const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
-  const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
+  const setOpen = S.tab === "profile" && S.settingsOpen && can("admin");
+  const narrowDetail = !wide() && (setOpen || (S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
     || (S.tab === "events" && (S.evKey || evNew)));
-  const title = S.tab === "events" && !wide() && evNew ? "Neuer Termin" : S.tab === "events" && !wide() && S.evEdit ? "Termin bearbeiten" : S.tab === "events" && !wide() && S.evKey ? "Termin" : S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
+  const title = setOpen ? "App-Einstellungen" : S.tab === "events" && !wide() && evNew ? "Neuer Termin" : S.tab === "events" && !wide() && S.evEdit ? "Termin bearbeiten" : S.tab === "events" && !wide() && S.evKey ? "Termin" : S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
   const cats = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew && !cats
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
@@ -1682,7 +1727,7 @@ function viewApp() {
   else if (S.tab === "members") content = membersView();
   else if (S.tab === "checks") content = checksView();
   else if (S.tab === "events") content = eventsView();
-  else content = profileView();
+  else content = setOpen ? settingsView() : profileView();
   return `<div class="app" style="--tabs:${TABS.length}">
     <header class="topbar gutter">
       ${narrowDetail ? `<button class="icon-btn" data-act="back" aria-label="Zurück zur Liste">${I.back}</button>` : `<img src="${LOGO}" alt="">`}
@@ -1918,7 +1963,7 @@ function taskEdit(t) {
           ${cats.map(c => `<option value="${esc(c)}" ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}
         </select>${S.errors.category ? fieldErr("category") : cats.length ? "" : `<div class="hint">Es gibt noch keine Kategorien. <button class="link" type="button" data-act="cats">Kategorien anlegen</button></div>`}</div>
       <div class="field"><label for="te-interval">Intervall</label>
-        <select class="select" id="te-interval" name="interval">${Object.entries(INTERVALS).map(([k, l]) => `<option value="${k}" ${d.interval === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <select class="select" id="te-interval" name="interval">${Object.entries(INTERVALS).filter(([k]) => k !== "J3").map(([k, l]) => `<option value="${k}" ${d.interval === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
     </div>
     <div class="three">${num("points", "Punkte (p)", 1)}${num("min", "Plätze min.", 1, 50)}${num("total", "Plätze max.", 1, 50)}</div>
     ${isNew ? "" : `<p class="cta-note" style="text-align:left;margin:-8px 0 0">Derzeit höchstens ${peakAssigned(t)} Plätze gleichzeitig vergeben.</p>`}
@@ -1990,12 +2035,12 @@ function pointsView() {
   const open = Api.myReports().filter(r => r.status === "reported" || r.status === "rejected").map(r => ({ ...r, kind: r.status }));
   const pf = S.pf || "all";
   const entries = (pf === "open" ? open : pf === "done" ? checks : [...open, ...checks]).sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  const scale = 50, pos = v => Math.min(100, v / scale * 100);
+  const scale = Math.max(50, SET.levelGold + 10), pos = v => Math.min(100, v / scale * 100);
   return `<div class="pane"><div class="points gutter">
     <section class="points-sum" aria-label="Übersicht">
-      <div class="year"><b>${new Date().getFullYear()}</b><span>Zum Jahreswechsel werden viele Punkte auf 0 gesetzt.</span></div>
+      <div class="year"><b>${new Date().getFullYear()}</b><span>Zum Jahreswechsel bleiben nur gesammelte Punkte über ${P(SET.levelSilver)} (Silber) erhalten.</span></div>
       <div class="trio">
-        <div class="big-stat collected"><span>Gesammelt</span><b>${P(p.collected)}</b><small>${u.checks.length} ${u.checks.length === 1 ? "Check" : "Checks"}</small></div>
+        <div class="big-stat collected"><span>Gesammelt</span><b>${P(p.collected)}</b><small>${u.checks.length} ${u.checks.length === 1 ? "Check" : "Checks"}${p.carry ? ` + ${P(p.carry)} Übertrag` : ""}</small></div>
         <div class="big-stat committed"><span>Zugesagt</span><b>${P(p.committed)}</b><small>${u.claims.length} ${u.claims.length === 1 ? "Aufgabe" : "Aufgaben"}</small></div>
         <div class="big-stat sum"><span>Summe</span><b>${P(sum)}</b><small>für dein Level</small></div>
       </div>
@@ -2126,7 +2171,7 @@ function memberClaimsSection(m) {
 }
 function memberReadView(m) {
   const pct = m.committed ? Math.min(100, Math.round(m.collected / m.committed * 100)) : 0;
-  const roles = (m.roles || []).map(k => (ROLES.find(r => r.key === k) || { label: k }).label);
+  const roles = (m.roles || []).map(k => (ROLES.find(r => r.key === k) || { label: k === "admin" ? "Admin" : k }).label);
   return `<article class="detail gutter">
     ${memberHead(m, voiceLabel(m.voice) + (m.active ? "" : " · inaktiv"))}
     ${pointPanels(m)}
@@ -2259,12 +2304,13 @@ function eventDetail(o) {
   ].join("");
   const cd = S.confirmEvDel && S.confirmEvDel.key === o.key ? S.confirmEvDel : null;
   const delBox = o.canDelete && !del ? (cd
-    ? `<div class="confirm" role="alert">${cd.scope === "series" ? "Alle Wiederholungen dieses Termins löschen?" : o.weekly ? `Nur den Termin am ${fmtDate(o.date)} löschen?` : "Diesen Termin löschen?"} Gelöschtes bleibt noch eine Woche sichtbar.
+    ? `<div class="confirm" role="alert">${cd.scope === "series" && o.weekly ? "Alle Wiederholungen dieses Termins löschen?" : o.weekly && cd.scope === "single" ? `Nur den Termin am ${fmtDate(o.date)} löschen?` : "Diesen Termin löschen?"} Gelöschtes bleibt noch eine Woche sichtbar.
         <div><button class="btn btn-primary btn-sm" data-act="ev-del-yes">Löschen</button><button class="btn btn-secondary btn-sm" data-act="ev-del-no">Abbrechen</button></div></div>`
     : o.weekly
       ? `<div class="del-choice"><button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="single">${I.trash}Nur diesen Termin löschen</button>
           <button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="series">${I.trash}Ganze Reihe löschen</button></div>`
-      : `<button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="series">${I.trash}Termin löschen</button>`) : "";
+      : `<button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="series">${I.trash}Termin löschen</button>`)
+    : o.canDelete && del ? `<button class="btn btn-secondary" data-act="ev-restore" data-key="${esc(o.key)}" ${S.busy ? "disabled" : ""}>${I.reset}${o.deletedScope === "single" ? "Diesen Termin wiederherstellen" : o.weekly ? "Terminreihe wiederherstellen" : "Termin wiederherstellen"}</button>` : "";
   return `<article class="detail gutter">
     <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(o.category)}${o.weekly ? " · wöchentlich" : ""}</div>
       ${o.canDelete && !del ? `<button class="btn btn-secondary btn-sm" data-act="ev-edit" data-id="${esc(o.id)}">${I.edit}Bearbeiten</button>` : ""}</div>
@@ -2400,6 +2446,7 @@ function profileView() {
       <button class="btn btn-primary" type="submit" id="save-profile" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.save}Änderungen speichern</button>
     </form>
     <div class="profile-actions">
+      ${can("admin") ? `<button class="btn btn-secondary" data-act="settings">${I.gear}App-Einstellungen</button>` : ""}
       <button class="btn btn-secondary" data-act="logout">${I.out}Abmelden</button>
       ${CONFIG.mock ? (S.confirmReset
         ? `<div class="form-error" style="display:grid;gap:10px">Alle Konten und Beispieldaten in diesem Browser löschen?
@@ -2407,6 +2454,54 @@ function profileView() {
         : `<button class="btn btn-ghost" data-act="reset">${I.reset}Prototyp-Daten zurücksetzen</button>`) : ""}
     </div>
   </div></div>`;
+}
+
+function settingsView() {
+  const v = S.setDraft || SET;
+  const num = (id, key, label, min, max, unit, hint) => `<div class="field"><label for="${id}">${label}</label>
+      <div class="unit-input"><input class="input" id="${id}" name="${key}" type="number" inputmode="numeric" min="${min}" max="${max}" step="1" value="${esc(v[key])}" ${S.errors[key] ? `aria-invalid="true" aria-describedby="e-${key}"` : ""}><span>${unit}</span></div>
+      ${hint ? `<div class="hint">${hint}</div>` : ""}${fieldErr(key)}</div>`;
+  return `<div class="pane"><form class="detail gutter" id="f-settings" novalidate>
+    <div class="headline"><div class="eyebrow">Verwaltung</div><h2>App-Einstellungen</h2>
+      <p class="task-desc">Gilt für alle Mitglieder des Chors.</p></div>
+    ${errBox()}
+    <section class="set-group"><h3 class="h3">Level</h3>
+      <p class="cta-note" style="text-align:left;margin:0">Punkte (Summe aus gesammelt und zugesagt), ab denen das Level erreicht ist. Darunter: Gast.</p>
+      <div class="set-three">
+        ${num("set-lm", "levelMember", "Mitglied ab", 1, 999, "p")}
+        ${num("set-ls", "levelSilver", "Silber ab", 1, 999, "p")}
+        ${num("set-lg", "levelGold", "Gold ab", 1, 999, "p")}
+      </div>
+      <p class="cta-note" style="text-align:left;margin:0">Zum Jahreswechsel bleiben nur die gesammelten Punkte über der Silber-Grenze erhalten.</p>
+    </section>
+    <section class="set-group"><h3 class="h3">Übernehmen von Aufgaben</h3>
+      <div class="field"><label for="set-ny">Folgejahr sichtbar ab</label>
+        <select class="select" id="set-ny" name="nextYearMonth">${MONTHS_LONG.map((m, i) => `<option value="${i + 1}" ${+v.nextYearMonth === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select>
+        <div class="hint">Ab diesem Monat lassen sich Aufgaben auch fürs nächste Jahr ansehen und übernehmen.</div></div>
+      ${num("set-md", "monthDay", "Monatsaufgaben: aktueller Monat bis zum", 1, 28, "Tag", "Danach beginnt eine Übernahme frühestens im nächsten Monat.")}
+      ${num("set-qd", "quarterDay", "Quartalsaufgaben: aktuelles Quartal bis zum", 1, 90, "Tag des Quartals", "Gezählt ab dem 1. Tag des Quartals, z. B. 15 = bis zum 15. Januar, April, Juli oder Oktober.")}
+    </section>
+    <div class="report-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.save}Speichern</button>
+      <button class="btn btn-ghost" type="button" data-act="settings-close">Abbrechen</button>
+    </div>
+  </form></div>`;
+}
+function readSettings(f) {
+  const n = k => { const x = f.elements[k].value.trim(); return x === "" ? NaN : Number(x); };
+  return { levelMember: n("levelMember"), levelSilver: n("levelSilver"), levelGold: n("levelGold"),
+    nextYearMonth: n("nextYearMonth"), monthDay: n("monthDay"), quarterDay: n("quarterDay") };
+}
+function validateSettings(v) {
+  const e = {}, int = (x, lo, hi) => Number.isInteger(x) && x >= lo && x <= hi;
+  if (!int(v.levelMember, 1, 999)) e.levelMember = "Bitte eine ganze Zahl von 1 bis 999.";
+  if (!int(v.levelSilver, 1, 999)) e.levelSilver = "Bitte eine ganze Zahl von 1 bis 999.";
+  else if (!e.levelMember && v.levelSilver <= v.levelMember) e.levelSilver = "Silber muss mehr Punkte brauchen als Mitglied.";
+  if (!int(v.levelGold, 1, 999)) e.levelGold = "Bitte eine ganze Zahl von 1 bis 999.";
+  else if (!e.levelSilver && v.levelGold <= v.levelSilver) e.levelGold = "Gold muss mehr Punkte brauchen als Silber.";
+  if (!int(v.monthDay, 1, 28)) e.monthDay = "Bitte einen Tag von 1 bis 28.";
+  if (!int(v.quarterDay, 1, 90)) e.quarterDay = "Bitte einen Tag von 1 bis 90.";
+  return e;
 }
 
 /* ---------- Toast ---------- */
@@ -2438,7 +2533,7 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null; S.lateVote = null;
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null; S.lateVote = null; S.settingsOpen = false; S.setDraft = null;
   if (!wide()) { S.taskId = null; S.memberId = null; S.evKey = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -2455,6 +2550,7 @@ document.addEventListener("click", async e => {
   if (a === "tab") return setTab(el.dataset.tab);
   if (a === "back") {
     if (S.tab === "events") { if (S.evEdit) { S.evEdit = null; S.evDraft = null; S.errors = {}; S.error = ""; } else if (S.evNew) { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; } else { S.evKey = null; S.confirmEvDel = null; } return render(); }
+    if (S.settingsOpen) { S.settingsOpen = false; S.setDraft = null; S.errors = {}; S.error = ""; return render(); }
     if (S.cats) { S.cats = false; S.catEdit = null; S.errors = {}; return render(); }
     if (S.memberEdit) { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; return render(); }
     if (S.editTask) { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; return render(); }
@@ -2483,6 +2579,15 @@ document.addEventListener("click", async e => {
   if (a === "ev-del") { S.confirmEvDel = { key: el.dataset.key, scope: el.dataset.scope }; render(); return; }
   if (a === "late-cancel") { S.lateVote = null; S.errors = {}; render(); return; }
   if (a === "ev-del-no") { S.confirmEvDel = null; render(); return; }
+  if (a === "ev-restore") {
+    const o = Api.events().find(x => x.key === el.dataset.key); if (!o) return;
+    go({ busy: true });
+    try { await Api.restoreEvent(o.id, o.deletedScope === "single" ? o.date : null); go({ busy: false }); toast("Termin wiederhergestellt."); }
+    catch (err) { go({ busy: false }); toast(err.message); }
+    return;
+  }
+  if (a === "settings") { S.settingsOpen = true; S.errors = {}; S.error = ""; S.setDraft = null; render(); scrollDetailTop(); return; }
+  if (a === "settings-close") { S.settingsOpen = false; S.errors = {}; S.error = ""; S.setDraft = null; render(); return; }
   if (a === "ev-del-yes") {
     const cd = S.confirmEvDel, o = cd && Api.events().find(x => x.key === cd.key);
     if (!o) { S.confirmEvDel = null; render(); return; }
@@ -2556,7 +2661,7 @@ document.addEventListener("click", async e => {
   if (a === "undo") { const u = S.undo; $("#toast-host").innerHTML = ""; S.undo = null; if (u) u(); return; }
   if (a === "reset") return go({ confirmReset: true });
   if (a === "reset-no") return go({ confirmReset: false });
-  if (a === "reset-yes") { DB = seed(); saveDB(); return go({ confirmReset: false, screen: "login", authMode: "login", taskId: null, memberId: null, tab: "tasks" }); }
+  if (a === "reset-yes") { DB = seed(); saveDB(); applySettings(SET_DEFAULT); return go({ confirmReset: false, screen: "login", authMode: "login", taskId: null, memberId: null, tab: "tasks" }); }
 });
 function scrollDetailTop() { const d = $("#detail-pane") || $(".pane"); if (d) d.scrollTop = 0; }
 document.addEventListener("change", async e => {
@@ -2715,6 +2820,14 @@ document.addEventListener("submit", async e => {
       }
       else { const newId = await Api.createTask(t); go({ busy: false, editTask: null, taskDraft: null, taskId: newId, q: "", onlyMine: false }); toast("Aufgabe angelegt."); }
     }
+    catch (err) { go({ busy: false, error: err.message }); }
+    return;
+  }
+  if (f.id === "f-settings") {
+    const v = readSettings(f), errors = validateSettings(v);
+    if (Object.keys(errors).length) return go({ errors, error: "", setDraft: v });
+    go({ busy: true, errors: {}, error: "", setDraft: v });
+    try { await Api.saveSettings(v); go({ busy: false, setDraft: null, settingsOpen: false }); toast("Einstellungen gespeichert."); }
     catch (err) { go({ busy: false, error: err.message }); }
     return;
   }

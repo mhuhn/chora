@@ -65,11 +65,13 @@ Das Backend gibt der App nach erfolgreicher Anmeldung eine Session (z. B. HttpOn
 ## Punkte und Level
 
 Alle Punkte werden mit der Währung „p“ angezeigt. Summe = zugesagt + gesammelt.
-Level nach Summe: unter 20p Gast, 20–29p Mitglied, 30–39p Silber, ab 40p Gold.
+Level nach Summe, Standard: unter 20p Gast, ab 20p Mitglied, ab 30p Silber, ab 40p Gold. Die Grenzen stellt die Rolle `admin` im Profil unter „App-Einstellungen“ ein, ebenso den Monat, ab dem das Folgejahr sichtbar ist (Standard September), und bis zu welchem Tag der aktuelle Monat (Standard 6.) bzw. das aktuelle Quartal (Standard 15. Tag) übernommen werden kann.
+
+Zum Jahreswechsel bleiben von den gesammelten Punkten nur die über der Silber-Grenze erhalten (z. B. 35p → 5p bei Silber ab 30p). Übernahmen laufen weiter.
 
 ## Datenmodell
 
-- **Aufgabe**: id, title, category, interval (`M` Monat, `Q` Quartal, `J` Jahr, `J3` 3 Jahre), points, total (1–50), assigned (1–50), validFrom, validTo
+- **Aufgabe**: id, title, category, interval (`M` Monat, `Q` Quartal, `J` Jahr), points, total (1–50), assigned (1–50), validFrom, validTo
 - **Aufgabencheck**: taskId, date, points, checker (Chor-ID)
 - **Meldung**: taskId, Mitglied, date, status (`reported` | `rejected`), comment, checker, decidedAt. Nach der Bestätigung wird daraus ein Aufgabencheck.
 - **Mitglied**: firstName, lastName, voice (`B`, `T`, `A1`, `A2`, `S1`, `S2`, `U` = unbekannt), chorId, committed, collected, active, roles, since (Mitglied seit); fehlend = committed − collected
