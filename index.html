@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.1";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.2";</script>
 </head>
 <body>
 <style>
@@ -38,6 +38,7 @@
   --on-green: #1d2210;
   --danger: #b42318;
   --gold: #a57800; --gold-soft: #fbefc5; --silver: #5f6b78; --silver-soft: #e7ebef;
+  --req-bg: #e4e8cc;
   --shadow: 0 1px 2px rgba(40, 48, 10, .06), 0 4px 16px rgba(40, 48, 10, .06);
   --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --body: "Figtree", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -51,6 +52,7 @@
     --orange: #f2701c; --orange-soft: #3d2312; --orange-ink: #ff9a57; --on-orange: #1a0d03; --on-green: #1d2210;
     --danger: #ff8a7a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.25);
     --gold: #f0c445; --gold-soft: #3a3011; --silver: #c3ccd6; --silver-soft: #2a2f35;
+    --req-bg: #2f3520;
     color-scheme: dark;
   }
 }
@@ -60,6 +62,7 @@
   --orange: #f2701c; --orange-soft: #3d2312; --orange-ink: #ff9a57; --on-orange: #1a0d03; --on-green: #1d2210;
   --danger: #ff8a7a; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.25);
   --gold: #f0c445; --gold-soft: #3a3011; --silver: #c3ccd6; --silver-soft: #2a2f35;
+  --req-bg: #2f3520;
   color-scheme: dark;
 }
 
@@ -412,7 +415,7 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .inline-form .btn { flex: none; }
 
 .task-desc { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 65ch; color: var(--ink); }
-.dots i.req { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--orange); }
+.dots-req { display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 4px 6px; margin: -4px 0 -4px -6px; border-radius: 999px; background: var(--req-bg); }
 .detail .textarea { min-height: 96px; }
 .report-form { display: grid; gap: 12px; padding: 14px; border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: left; }
 .report-form .two { gap: 12px; }
@@ -1558,7 +1561,11 @@ function taskDetail(t) {
   const myC = mine ? Api.myClaim(t.id) : null;
   const dotLine = sg => {
     const meHere = myC && covers(myC, t.interval, sg.from);
-    return `<div class="dots" aria-hidden="true">${Array.from({ length: t.total }, (_, i) => `<i class="${[i < sg.n ? (meHere && i === sg.n - 1 ? "me" : "on") : "", i < (t.min || 0) ? "req" : ""].join(" ").trim()}"></i>`).join("")}</div>`;
+    const cls = i => (i < sg.n ? (meHere && i === sg.n - 1 ? "me" : "on") : "");
+    const min = Math.min(t.min || 0, t.total);
+    const req = Array.from({ length: min }, (_, i) => `<i class="${cls(i)}"></i>`).join("");
+    const opt = Array.from({ length: t.total - min }, (_, j) => `<i class="${cls(min + j)}"></i>`).join("");
+    return `<div class="dots" aria-hidden="true">${min && min < t.total ? `<span class="dots-req">${req}</span>${opt}` : req + opt}</div>`;
   };
   const multi = segs.length > 1;
   const dots = t.total <= 50 && segs.length ? `<div class="dot-rows">${segs.map(sg => `<div class="dot-row${multi ? "" : " single"}">
@@ -1577,7 +1584,7 @@ function taskDetail(t) {
   const below = (t.min || 0) - n;
   const yearTxt = yearChoices().length > 1 ? ` (${year})` : "";
   const seatCap = (multi ? `Plätze vergeben je Zeitraum${yearTxt}, höchstens ${t.total}` : `${n} von ${t.total} Plätzen vergeben${yearTxt}`)
-    + `${t.min && t.min !== t.total ? ` · mindestens ${t.min}` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen bis zu ${below} Personen`}` : ""}`;
+    + `${t.min && t.min !== t.total ? ` · mindestens ${t.min} (hinterlegt)` : ""}${below > 0 ? ` · ${below === 1 ? "es fehlt noch 1 Person" : `es fehlen bis zu ${below} Personen`}` : ""}`;
   return `<article class="detail gutter">
     <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(t.category)}</div>
       ${can("aufgabenverwalter") ? `<button class="btn btn-secondary btn-sm" data-act="edit-task" data-id="${t.id}">${I.edit}Bearbeiten</button>` : ""}</div>
