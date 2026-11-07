@@ -23,6 +23,9 @@ Die installierte App arbeitet mit den echten Daten. Mit `?demo` hinter der Adres
    Unter Roles „Multiple Roles“ aktivieren und die Rollen `mitgliedsverwalter`, `aufgabenverwalter`, `aufgabenchecker`, `terminverwalter` anlegen. E-Mail/Passwort-Anmeldung und E-Mail-Bestätigung einschalten.
 2. **Supabase → Edge Functions → Secrets**: `WORKOS_API_KEY` = WorkOS API-Key (`sk_…`). Optional: `WORKOS_DEFAULT_ROLE`, falls die Standardrolle eurer Organisation nicht `member` heißt.
 3. Der ersten Person im WorkOS-Dashboard die Rolle `mitgliedsverwalter` geben. Alles Weitere geht danach in der App.
+4. Optional, für die E-Mail bei der Freischaltung: bei [Resend](https://resend.com) eine Absender-Domain bestätigen und in Supabase die Secrets `RESEND_API_KEY` und `MAIL_FROM` (z. B. `Chora <chora@euer-chor.de>`) setzen, optional `APP_URL`.
+
+Neu registrierte Mitglieder sind inaktiv und sehen nur ihr Profil, bis die Mitgliederverwaltung sie freischaltet. Die Zahl der neuen Registrierungen steht am Reiter Mitglieder.
 
 Datenbank (Tabellen, Regeln, Funktionen) und die Edge Functions `chora-auth` und `chora-admin` sind im Supabase-Projekt angelegt. Der Quelltext liegt in `chora-supabase.zip`.
 
