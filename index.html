@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.11.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.11.1";</script>
 </head>
 <body>
 <style>
@@ -67,6 +67,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
@@ -452,9 +453,14 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .ev-date { flex: none; width: 48px; display: grid; justify-items: center; gap: 1px; padding: 6px 0; border-radius: 10px; background: var(--surface-2); line-height: 1.1; }
 .ev-date small { font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .ev-date b { font-family: var(--display); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.row.weekly .row-title { color: var(--muted); font-weight: 600; }
+.row.weekly .ev-date { background: transparent; border: 1.5px dashed var(--line); }
+.row.weekly .ev-date b { font-weight: 700; color: var(--muted); }
+.row.weekly { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
 .row.overdue { background: var(--orange-soft); }
 .row.overdue:hover { background: var(--orange-soft); }
-.row.overdue .ev-date { background: var(--orange); color: var(--on-orange); }
+.row.overdue .ev-date { background: var(--orange); color: var(--on-orange); border-color: transparent; }
+.row.overdue .ev-date b { color: inherit; }
 .row.overdue .ev-date small { color: inherit; }
 .row.deleted .row-title { text-decoration: line-through; }
 .row.deleted .row-title, .row.deleted .row-sub, .row.deleted .ev-date { opacity: .55; }
@@ -1044,6 +1050,13 @@ const Api = {
     DB.events.push(e); saveDB();
     return e.id;
   },
+  async updateEvent(id, d) {
+    await wait();
+    const e = DB.events.find(x => x.id === id);
+    if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
+    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Bearbeiten kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    Object.assign(e, d, { deadlineDate: d.deadlineKind === "date" ? d.deadlineDate : null }); saveDB();
+  },
   async deleteEvent(id) {
     await wait();
     const e = DB.events.find(x => x.id === id);
@@ -1395,6 +1408,12 @@ const RealApi = {
     await reload();
     return id;
   },
+  async updateEvent(id, d) {
+    await Remote.rpc("update_event", { p_event: id, p_title: d.title, p_description: d.description || null, p_starts_on: d.startsOn,
+      p_start_time: d.time || null, p_location: d.location || null, p_directions: d.directions || null, p_category: d.category,
+      p_deadline_kind: d.deadlineKind, p_deadline_date: d.deadlineKind === "date" ? d.deadlineDate : null, p_weekly: !!d.weekly });
+    await reload();
+  },
   async deleteEvent(id) { await Remote.rpc("delete_event", { p_event: id }); await reload(); },
   async voteEvent(id, occ, choice) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice }); await reload(); },
   myReports() {
@@ -1455,7 +1474,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null, evEdit: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1605,7 +1624,7 @@ function viewApp() {
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
     || (S.tab === "events" && (S.evKey || evNew)));
-  const title = S.tab === "events" && !wide() && evNew ? "Neuer Termin" : S.tab === "events" && !wide() && S.evKey ? "Termin" : S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
+  const title = S.tab === "events" && !wide() && evNew ? "Neuer Termin" : S.tab === "events" && !wide() && S.evEdit ? "Termin bearbeiten" : S.tab === "events" && !wide() && S.evKey ? "Termin" : S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
   const cats = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew && !cats
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
@@ -2124,7 +2143,7 @@ function eventRow(o) {
   else if (!o.myChoice && o.deadline) line = `<span class="ev-line">Rückmeldung bis ${fmtShort(o.deadline)}</span>`;
   const underLine = under.length ? `<span class="ev-line warn">Unterbesetzt: ${under.map(([v, n]) => `${v} ${n}`).join(" · ")}</span>` : "";
   const ch = CHOICES.find(c => c.key === o.myChoice);
-  return `<li><button class="row gutter${over ? " overdue" : ""}${del ? " deleted" : ""}" data-act="event" data-key="${esc(o.key)}" ${cur}>
+  return `<li><button class="row gutter${o.weekly ? " weekly" : ""}${over ? " overdue" : ""}${del ? " deleted" : ""}" data-act="event" data-key="${esc(o.key)}" ${cur}>
     <span class="ev-date"><small>${WD[wdOf(o.date)]}</small><b>${o.date.slice(8, 10)}.${o.date.slice(5, 7)}.</b></span>
     <span class="row-main"><span class="row-title">${esc(o.title)}${del ? '<span class="mine-dot tag-del">GELÖSCHT</span>' : ""}</span>
       ${sub ? `<span class="row-sub">${sub}</span>` : ""}${line}${underLine}</span>
@@ -2147,7 +2166,7 @@ function eventsView() {
   if (S.evKey && !Api.events().some(o => o.key === S.evKey)) S.evKey = null;
   if (wide() && !S.evKey && !S.evNew && list.length) S.evKey = list[0].key;
   const o = Api.events().find(x => x.key === S.evKey);
-  const detail = S.evNew ? eventForm() : o ? eventDetail(o) : "";
+  const detail = S.evNew ? eventForm(null) : o && S.evEdit === o.id && o.canDelete ? eventForm(o) : o ? eventDetail(o) : "";
   if (!wide() && (S.evKey || S.evNew)) return `<div class="pane">${detail}</div>`;
   return `<div class="split">
     <div class="list-pane" id="list-pane">
@@ -2189,7 +2208,9 @@ function eventDetail(o) {
         <div><button class="btn btn-primary btn-sm" data-act="ev-del-yes" data-id="${esc(o.id)}">Löschen</button><button class="btn btn-secondary btn-sm" data-act="ev-del-no">Abbrechen</button></div></div>`
     : `<button class="btn btn-danger" data-act="ev-del" data-id="${esc(o.id)}">${I.trash}${o.weekly ? "Termin mit allen Wiederholungen löschen" : "Termin löschen"}</button>`) : "";
   return `<article class="detail gutter">
-    <div class="headline"><div class="eyebrow">${esc(o.category)}${o.weekly ? " · wöchentlich" : ""}</div><h2>${esc(o.title)}</h2>
+    <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(o.category)}${o.weekly ? " · wöchentlich" : ""}</div>
+      ${o.canDelete && !del ? `<button class="btn btn-secondary btn-sm" data-act="ev-edit" data-id="${esc(o.id)}">${I.edit}Bearbeiten</button>` : ""}</div>
+      <h2>${esc(o.title)}</h2>
       <div class="ev-when">${when}</div>
       ${o.description ? `<p class="task-desc pre">${linkify(o.description)}</p>` : ""}</div>
     ${banner}${vote}${staff}
@@ -2197,11 +2218,16 @@ function eventDetail(o) {
     ${delBox}
   </article>`;
 }
-function eventForm() {
-  const d = S.evDraft || { title: "", description: "", startsOn: "", time: "", location: "", directions: "", category: "", deadlineKind: "1w", deadlineDate: "", weekly: false };
+function eventForm(o) {
+  const d = S.evDraft || (o
+    ? { title: o.title, description: o.description, startsOn: o.startsOn, time: o.time, location: o.location, directions: o.directions,
+        category: o.category, deadlineKind: o.deadlineKind || "none", deadlineDate: o.deadlineKind === "date" ? o.deadline : "", weekly: o.weekly }
+    : { title: "", description: "", startsOn: "", time: "", location: "", directions: "", category: "", deadlineKind: "1w", deadlineDate: "", weekly: false });
   const cats = Api.eventCategories();
-  return `<form class="detail gutter" id="f-event" novalidate>
-    <div class="headline"><div class="eyebrow">Neu</div><h2>Termin hinzufügen</h2></div>
+  const isDate = d.deadlineKind === "date" && !d.weekly;
+  return `<form class="detail gutter" id="f-event" data-id="${o ? esc(o.id) : ""}" novalidate>
+    <div class="headline"><div class="eyebrow">${o ? "Termin bearbeiten" : "Neu"}</div><h2>${o ? esc(o.title) : "Termin hinzufügen"}</h2></div>
+    ${o && o.weekly ? '<p class="cta-note" style="text-align:left;margin:-8px 0 0">Änderungen gelten für alle Wiederholungen. Rückmeldungen bleiben für die Tage erhalten, an denen der Termin weiter stattfindet.</p>' : ""}
     ${errBox()}
     <div class="field"><label for="ev-title">Titel</label>
       <input class="input" id="ev-title" name="title" maxlength="120" value="${esc(d.title)}"${inv("title")}>${fieldErr("title")}</div>
@@ -2212,7 +2238,7 @@ function eventForm() {
           ${cats.map(c => `<option value="${esc(c)}" ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}
         </select>${fieldErr("category")}</div>
       <div class="field"><label for="ev-date">Termin</label>
-        <input class="input" id="ev-date" name="startsOn" type="date" min="${todayISO()}" value="${esc(d.startsOn)}"${inv("startsOn")}>${fieldErr("startsOn")}</div>
+        <input class="input" id="ev-date" name="startsOn" type="date" ${o ? "" : `min="${todayISO()}"`} value="${esc(d.startsOn)}"${inv("startsOn")}>${fieldErr("startsOn")}</div>
     </div>
     <div class="two">
       <div class="field"><label for="ev-time">Uhrzeit</label>
@@ -2227,13 +2253,13 @@ function eventForm() {
     <div class="two">
       <div class="field"><label for="ev-dlkind">Rückmeldung bis</label>
         <select class="select" id="ev-dlkind" name="deadlineKind">${Object.entries(DEADLINES).map(([k, l]) => `<option value="${k}" ${d.deadlineKind === k ? "selected" : ""} ${k === "date" && d.weekly ? "disabled" : ""}>${l}</option>`).join("")}</select></div>
-      <div class="field" id="ev-dldate-f" ${d.deadlineKind === "date" && !d.weekly ? "" : "hidden"}><label for="ev-dldate">Datum der Frist</label>
-        <input class="input" id="ev-dldate" name="deadlineDate" type="date" value="${esc(d.deadlineDate)}"${inv("deadlineDate")}>${fieldErr("deadlineDate")}</div>
+      <div class="field" id="ev-dldate-f" ${isDate ? "" : "hidden"}><label for="ev-dldate">Datum der Frist</label>
+        <input class="input" id="ev-dldate" name="deadlineDate" type="date" value="${esc(d.deadlineDate)}" ${isDate ? "" : "disabled"}${inv("deadlineDate")}>${fieldErr("deadlineDate")}</div>
     </div>
     <label class="check-row"><input type="checkbox" id="ev-weekly" name="weekly" ${d.weekly ? "checked" : ""}>Wöchentlich wiederholen</label>
     <p class="cta-note" id="ev-weekly-hint" style="text-align:left;margin:-8px 0 0" ${d.weekly ? "" : "hidden"}>Bei wöchentlichen Terminen gilt die Frist für jede Woche einzeln. Ein festes Datum ist deshalb nicht möglich.</p>
     <div class="edit-actions">
-      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Termin anlegen</button>
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : (o ? I.save : I.plus)}${o ? "Speichern" : "Termin anlegen"}</button>
       <button class="btn btn-ghost" type="button" data-act="ev-cancel">Abbrechen</button>
     </div>
   </form>`;
@@ -2242,14 +2268,14 @@ function readEvent(f) {
   const g = k => String(new FormData(f).get(k) || "").trim();
   return { title: g("title"), category: g("category"), startsOn: g("startsOn"), time: g("time"), location: g("location"),
     directions: g("directions"), description: g("description"), deadlineKind: g("deadlineKind") || "none",
-    deadlineDate: g("deadlineDate"), weekly: f.weekly.checked };
+    deadlineDate: g("deadlineKind") === "date" && !f.weekly.checked ? g("deadlineDate") : "", weekly: f.weekly.checked };
 }
-function validateEvent(d) {
+function validateEvent(d, orig) {
   const e = {};
   if (!d.title) e.title = "Bitte gib einen Titel ein.";
   if (!d.category) e.category = "Bitte wähle eine Kategorie.";
   if (!d.startsOn) e.startsOn = "Bitte wähle ein Datum.";
-  else if (d.startsOn < todayISO()) e.startsOn = "Der Termin liegt in der Vergangenheit.";
+  else if (d.startsOn < todayISO() && (!orig || d.startsOn !== orig.startsOn)) e.startsOn = "Der Termin liegt in der Vergangenheit.";
   if (d.deadlineKind === "date" && !d.weekly) {
     if (!d.deadlineDate) e.deadlineDate = "Bitte wähle ein Datum für die Frist.";
     else if (d.startsOn && d.deadlineDate > d.startsOn) e.deadlineDate = "Die Frist muss vor dem Termin liegen.";
@@ -2340,7 +2366,7 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null;
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null;
   if (!wide()) { S.taskId = null; S.memberId = null; S.evKey = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -2356,20 +2382,21 @@ document.addEventListener("click", async e => {
   if (a === "logout") { $("#toast-host").innerHTML = ""; await Api.logout(); S.taskId = S.memberId = S.editTask = null; return go({ screen: "login", authMode: "login", error: "", errors: {}, draft: null }); }
   if (a === "tab") return setTab(el.dataset.tab);
   if (a === "back") {
-    if (S.tab === "events") { if (S.evNew) { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; } else { S.evKey = null; S.confirmEvDel = null; } return render(); }
+    if (S.tab === "events") { if (S.evEdit) { S.evEdit = null; S.evDraft = null; S.errors = {}; S.error = ""; } else if (S.evNew) { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; } else { S.evKey = null; S.confirmEvDel = null; } return render(); }
     if (S.cats) { S.cats = false; S.catEdit = null; S.errors = {}; return render(); }
     if (S.memberEdit) { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; return render(); }
     if (S.editTask) { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; return render(); }
     S.taskId = null; S.memberId = null; S.confirmDeact = null; return render();
   }
   if (a === "event") {
-    S.evKey = el.dataset.key; S.evNew = false; S.confirmEvDel = null; S.errors = {}; S.error = "";
+    S.evKey = el.dataset.key; S.evNew = false; S.evEdit = null; S.evDraft = null; S.confirmEvDel = null; S.errors = {}; S.error = "";
     if (wide()) { $("#detail-pane").innerHTML = eventDetail(Api.events().find(o => o.key === S.evKey)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
     else { render(); $(".pane").scrollTop = 0; }
     return;
   }
-  if (a === "new-event") { S.evNew = true; S.evDraft = null; S.errors = {}; S.error = ""; if (!wide()) S.evKey = null; else markCurrent(null); render(); scrollDetailTop(); const i = $("#ev-title"); if (i) i.focus(); return; }
-  if (a === "ev-cancel") { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; render(); return; }
+  if (a === "ev-edit") { S.evEdit = el.dataset.id; S.evDraft = null; S.confirmEvDel = null; S.errors = {}; S.error = ""; render(); scrollDetailTop(); return; }
+  if (a === "new-event") { S.evEdit = null; S.evNew = true; S.evDraft = null; S.errors = {}; S.error = ""; if (!wide()) S.evKey = null; else markCurrent(null); render(); scrollDetailTop(); const i = $("#ev-title"); if (i) i.focus(); return; }
+  if (a === "ev-cancel") { S.evNew = false; S.evEdit = null; S.evDraft = null; S.errors = {}; S.error = ""; render(); return; }
   if (a === "ev-repeat") { S.evRepeat = el.dataset.v; render(); return; }
   if (a === "vote") {
     const o = Api.events().find(x => x.key === el.dataset.key); if (!o) return;
@@ -2459,7 +2486,9 @@ document.addEventListener("change", async e => {
     const optDate = kind.querySelector('option[value="date"]');
     optDate.disabled = weekly;
     if (weekly && kind.value === "date") kind.value = "1w";
-    $("#ev-dldate-f").hidden = weekly || kind.value !== "date";
+    const isDate = !weekly && kind.value === "date";
+    $("#ev-dldate-f").hidden = !isDate;
+    $("#ev-dldate").disabled = !isDate;
     $("#ev-weekly-hint").hidden = !weekly;
     return;
   }
@@ -2532,13 +2561,15 @@ document.addEventListener("submit", async e => {
     return;
   }
   if (f.id === "f-event") {
-    const d = readEvent(f), errors = validateEvent(d);
+    const editId = f.dataset.id, orig = editId ? Api.events().find(x => x.id === editId) : null;
+    const d = readEvent(f), errors = validateEvent(d, orig);
     if (Object.keys(errors).length) return go({ errors, error: "", evDraft: d });
     go({ busy: true, errors: {}, error: "", evDraft: d });
     try {
-      const id = await Api.addEvent(d);
-      go({ busy: false, evNew: false, evDraft: null, evKey: `${id}|${d.startsOn}` });
-      toast("Termin angelegt.");
+      const id = editId ? (await Api.updateEvent(editId, d), editId) : await Api.addEvent(d);
+      const first = Api.events().find(x => x.id === id);
+      go({ busy: false, evNew: false, evEdit: null, evDraft: null, evKey: first ? first.key : null });
+      toast(editId ? "Termin gespeichert." : "Termin angelegt.");
     } catch (err) { go({ busy: false, error: err.message }); }
     return;
   }

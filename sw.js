@@ -1,5 +1,5 @@
 // Chora Service Worker – Version bei jedem Upload erhöhen
-const VERSION = "chora-1.11.0";
+const VERSION = "chora-1.11.1";
 const SHELL = ["./", "index.html", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-180.png", "icons/icon-32.png", "icons/maskable-512.png"];
 
