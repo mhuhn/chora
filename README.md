@@ -25,6 +25,12 @@ Die installierte App arbeitet mit den echten Daten. Mit `?demo` hinter der Adres
 3. Der ersten Person im WorkOS-Dashboard die Rolle `mitgliedsverwalter` geben. Alles Weitere geht danach in der App.
 4. Optional, für die E-Mail bei der Freischaltung: bei [Resend](https://resend.com) eine Absender-Domain bestätigen und in Supabase die Secrets `RESEND_API_KEY` und `MAIL_FROM` (z. B. `Chora <chora@euer-chor.de>`) setzen, optional `APP_URL`.
 
+5. Optional, für den Reiter Dateien (OneDrive for Business / SharePoint):
+   - In Microsoft Entra eine App registrieren, ein Client-Secret anlegen und die Anwendungsberechtigung `Files.ReadWrite.All` (oder enger `Sites.Selected`) mit Administratorzustimmung erteilen.
+   - Die ID des Laufwerks ermitteln (z. B. Graph Explorer: `GET /users/{chor-konto}/drive` oder `GET /sites/{site-id}/drive`).
+   - In Supabase die Secrets `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_DRIVE_ID` setzen.
+   - In der App unter Profil → App-Einstellungen den Ordnerpfad eintragen, z. B. `/Chor/Dateien`. Erst dann erscheint der Reiter Dateien. Die Rolle `dateiverwalter` darf hochladen (bis 5 MB), Ordner anlegen und löschen sowie Dateien umbenennen, verschieben und löschen.
+
 Neu registrierte Mitglieder sind inaktiv und sehen nur ihr Profil, bis die Mitgliederverwaltung sie freischaltet. Die Zahl der neuen Registrierungen steht am Reiter Mitglieder.
 
 Datenbank (Tabellen, Regeln, Funktionen) und die Edge Functions `chora-auth` und `chora-admin` sind im Supabase-Projekt angelegt. Der Quelltext liegt in `chora-supabase.zip`.

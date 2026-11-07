@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.16.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.17.0";</script>
 </head>
 <body>
 <style>
@@ -409,6 +409,44 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .chip-sep { flex: none; width: 1px; background: var(--line); margin: 4px 2px; }
 .nav .ico { position: relative; }
 .checks-btn { position: relative; }
+/* Dateien */
+.files { display: grid; align-content: start; }
+.f-head { display: grid; gap: 10px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 14px; font-weight: 650; min-width: 0; }
+.crumbs .link { font-weight: 600; }
+.crumbs [aria-current] { overflow-wrap: anywhere; }
+.crumb-sep { color: var(--muted); }
+.sort-dir { margin-left: 5px; font-weight: 800; }
+.f-list .row { border-bottom: 0; }
+.f-item { border-bottom: 1px solid var(--line); }
+.f-row { display: flex; align-items: center; }
+.f-row .f-main { flex: 1; min-width: 0; }
+.f-more { margin: 0 8px 0 0; flex: none; color: var(--muted); }
+.f-item.open { background: var(--surface-2); }
+.f-ico { width: 36px; height: 36px; flex: none; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.f-ico svg { width: 22px; height: 22px; }
+.f-ico.folder { background: var(--green-soft); color: var(--green-ink); }
+.f-ico.pdf { color: var(--orange-ink); background: var(--orange-soft); }
+.f-ico.img { color: #2f7a8a; }
+.f-ico.audio, .f-ico.music, .f-ico.video { color: #6a4fb3; }
+.f-ico.sheet { color: #2f7d4a; }
+.f-name { overflow-wrap: anywhere; }
+.f-extra { padding-bottom: 12px; display: grid; gap: 8px; }
+.f-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.danger-text { color: var(--orange-ink); }
+.f-inline { display: grid; gap: 8px; }
+.f-inline-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.f-folder-actions { display: flex; }
+.f-busy { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.spinner.dark { color: var(--green-ink); }
+.f-list.dim { opacity: .55; }
+.f-move { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.f-move-head { display: flex; flex-wrap: wrap; gap: 4px 6px; font-size: 14px; align-items: center; }
+.f-move-head > span:first-child { color: var(--muted); }
+.f-move-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.f-move-list button { width: 100%; display: flex; align-items: center; gap: 10px; background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 9px 2px; text-align: left; font: inherit; color: var(--ink); }
+.f-move-list button > svg:first-child { width: 20px; height: 20px; color: var(--green-ink); flex: none; }
+.f-move-list button span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .topbar .btn-sm { padding-left: 10px; padding-right: 10px; gap: 5px; } .topbar.crowded > img { display: none; } }
 .btn-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--orange); color: var(--on-orange); font-size: 12px; font-weight: 800; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
 .nav .count-badge { position: absolute; top: -4px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--orange); color: var(--on-orange); font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -580,14 +618,15 @@ const ROLES = [
   { key: "mitgliedsverwalter", label: "Mitgliedsverwalter", hint: "Sieht alle Angaben, aktiviert Mitglieder, vergibt Rollen" },
   { key: "aufgabenverwalter", label: "Aufgabenverwalter", hint: "Bearbeitet Aufgaben" },
   { key: "aufgabenchecker", label: "Aufgabenchecker", hint: "Bestätigt erledigte Aufgaben" },
-  { key: "terminverwalter", label: "Terminverwalter", hint: "Legt Termine an, bearbeitet und löscht sie" }
+  { key: "terminverwalter", label: "Terminverwalter", hint: "Legt Termine an, bearbeitet und löscht sie" },
+  { key: "dateiverwalter", label: "Dateiverwalter", hint: "Lädt Dateien hoch, legt Ordner an, verschiebt und löscht" }
 ];
 const LEVELS = [
   { name: "Gast", min: 0, cls: "gast" }, { name: "Mitglied", min: 20, cls: "mitglied" },
   { name: "Silber", min: 30, cls: "silber" }, { name: "Gold", min: 40, cls: "gold" }
 ];
 // App-Einstellungen (Verwaltung: Rolle admin)
-const SET_DEFAULT = { levelMember: 20, levelSilver: 30, levelGold: 40, nextYearMonth: 9, monthDay: 6, quarterDay: 15 };
+const SET_DEFAULT = { levelMember: 20, levelSilver: 30, levelGold: 40, nextYearMonth: 9, monthDay: 6, quarterDay: 15, filesFolder: "" };
 const SET = { ...SET_DEFAULT };
 function applySettings(s) {
   Object.assign(SET, s || {});
@@ -854,7 +893,30 @@ function seed() {
     { key: e3key, by: "m-A1-Ruth", from: "ifneeded", to: "maybe", reason: "Kinderbetreuung ist noch nicht geklärt.", at: ago(5) }
   ];
   const eventExceptions = { [`e1|${dAdd(nextTue, 14)}`]: { deletedAt: ago(20), deletedBy: "m-B-Thomas" } };
-  return { v: 16, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
+  // Dateien (OneDrive-Ordner im Demo-Modus)
+  const F = (id, name, parent, modified, size = null) => ({ id, name, parent, folder: size == null, modified, size });
+  const files = [
+    F("noten", "Noten", "root", "2026-11-03T18:20:00Z"),
+    F("noten-wk", "Weihnachtskonzert 2026", "noten", "2026-11-03T18:20:00Z"),
+    F("f1", "Stille Nacht – Chorsatz.pdf", "noten-wk", "2026-10-28T09:12:00Z", 412000),
+    F("f2", "Adeste Fideles.pdf", "noten-wk", "2026-10-28T09:15:00Z", 388000),
+    F("f3", "Tochter Zion – Satz für SATB.pdf", "noten-wk", "2026-11-03T18:20:00Z", 529000),
+    F("f4", "Programmfolge.docx", "noten-wk", "2026-11-05T20:41:00Z", 41000),
+    F("noten-fr", "Frühjahrskonzert 2026", "noten", "2026-03-12T10:00:00Z"),
+    F("f5", "Laudate Dominum.pdf", "noten-fr", "2026-02-02T08:30:00Z", 301000),
+    F("f6", "Locus iste.pdf", "noten-fr", "2026-02-02T08:31:00Z", 276000),
+    F("aufn", "Probenaufnahmen", "root", "2026-11-04T07:45:00Z"),
+    F("f7", "Stille Nacht – Tenor.m4a", "aufn", "2026-11-04T07:45:00Z", 3120000),
+    F("f8", "Stille Nacht – alle Stimmen.mp3", "aufn", "2026-11-04T07:44:00Z", 4650000),
+    F("f9", "Adeste – Bass.m4a", "aufn", "2026-10-29T21:10:00Z", 2480000),
+    F("fotos", "Fotos", "root", "2026-07-06T16:02:00Z"),
+    F("f10", "Sommerfest 2026.jpg", "fotos", "2026-07-06T16:02:00Z", 2210000),
+    F("f11", "Frühjahrskonzert – Gruppenbild.jpg", "fotos", "2026-03-22T19:30:00Z", 3480000),
+    F("f12", "Satzung.pdf", "root", "2024-04-18T12:00:00Z", 198000),
+    F("f13", "Protokoll Mitgliederversammlung 2026.docx", "root", "2026-03-05T21:30:00Z", 64000),
+    F("f14", "Probenplan 2027.xlsx", "root", "2026-10-30T17:05:00Z", 23000)
+  ];
+  return { v: 17, files, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
     eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
@@ -917,15 +979,16 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v16";
+const KEY = "chora.v17";
 let DB;
+const FILE_BLOBS = new Map();   // im Demo-Modus hochgeladene Dateien (nur bis zum Neuladen)
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 16) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 17) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
 DB = loadDB();
-if (CONFIG.mock) applySettings(DB.settings || SET_DEFAULT);
+if (CONFIG.mock) applySettings(DB.settings || { ...SET_DEFAULT, filesFolder: "/Chor/Dateien" });
 
 /* =====================================================================
    API-Schicht. Im Mock-Modus wird alles lokal simuliert.
@@ -1095,6 +1158,64 @@ const Api = {
     });
   },
   events() { return mockEvents(); },
+  // Dateien – im echten Betrieb über die Edge Function chora-files (Microsoft Graph)
+  async listFiles(id) {
+    await wait(120);
+    const rootName = (SET.filesFolder || "/Dateien").split("/").filter(Boolean).pop() || "Dateien";
+    const fid = id || "root";
+    if (fid !== "root" && !DB.files.some(x => x.id === fid && x.folder)) throw new ApiError("gone", "Diesen Ordner gibt es nicht mehr.");
+    const kids = DB.files.filter(x => x.parent === fid);
+    return { id: fid, name: fid === "root" ? rootName : DB.files.find(x => x.id === fid).name,
+      items: kids.map(x => ({ ...x, count: x.folder ? DB.files.filter(y => y.parent === x.id).length : null })) };
+  },
+  async fileUrl(f) {
+    const blob = FILE_BLOBS.get(f.id) || new Blob([`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+      <body style="font:16px system-ui;padding:24px;color:#1d2112;background:#f7f8f1"><h2>${esc(f.name)}</h2>
+      <p>Beispieldatei aus dem Demo-Modus. In der echten App öffnet sich hier die Datei aus OneDrive.</p></body>`], { type: "text/html" });
+    return URL.createObjectURL(blob);
+  },
+  async uploadFile(folderId, file) {
+    await wait(300);
+    if (!can("dateiverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Dateiverwalter.");
+    if (file.size > FILE_MAX) throw new ApiError("size", "Erlaubt sind höchstens 5 MB.");
+    let name = file.name || "Foto.jpg";
+    const taken = n => DB.files.some(x => x.parent === folderId && x.name.toLowerCase() === n.toLowerCase());
+    for (let i = 2; taken(name); i++) name = file.name.replace(/(\.[^.]+)?$/, ` (${i})$1`);
+    const id = "u" + Date.now().toString(36);
+    DB.files.push({ id, name, parent: folderId, folder: false, modified: new Date().toISOString(), size: file.size });
+    FILE_BLOBS.set(id, file); saveDB();
+  },
+  async createFolder(parentId, name) {
+    await wait(150);
+    if (!can("dateiverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Dateiverwalter.");
+    if (DB.files.some(x => x.parent === parentId && x.name.toLowerCase() === name.toLowerCase())) throw new ApiError("exists", `„${name}“ gibt es in diesem Ordner schon.`);
+    DB.files.push({ id: "d" + Date.now().toString(36), name, parent: parentId, folder: true, modified: new Date().toISOString(), size: null }); saveDB();
+  },
+  async deleteFile(id) {
+    await wait(150);
+    if (!can("dateiverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Dateiverwalter.");
+    if (id === "root") throw new ApiError("root", "Der Hauptordner lässt sich nicht löschen.");
+    const gone = new Set([id]);
+    let grew = true;
+    while (grew) { grew = false; DB.files.forEach(x => { if (!gone.has(x.id) && gone.has(x.parent)) { gone.add(x.id); grew = true; } }); }
+    DB.files = DB.files.filter(x => !gone.has(x.id)); gone.forEach(g => FILE_BLOBS.delete(g)); saveDB();
+  },
+  async renameFile(id, name) {
+    await wait(150);
+    if (!can("dateiverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Dateiverwalter.");
+    const f = DB.files.find(x => x.id === id);
+    if (!f) throw new ApiError("gone", "Diese Datei gibt es nicht mehr.");
+    if (DB.files.some(x => x !== f && x.parent === f.parent && x.name.toLowerCase() === name.toLowerCase())) throw new ApiError("exists", `„${name}“ gibt es in diesem Ordner schon.`);
+    f.name = name; f.modified = new Date().toISOString(); saveDB();
+  },
+  async moveFile(id, targetId) {
+    await wait(150);
+    if (!can("dateiverwalter")) throw new ApiError("forbidden", "Dafür brauchst du die Rolle Dateiverwalter.");
+    const f = DB.files.find(x => x.id === id);
+    if (!f) throw new ApiError("gone", "Diese Datei gibt es nicht mehr.");
+    if (DB.files.some(x => x.parent === targetId && x.name.toLowerCase() === f.name.toLowerCase())) throw new ApiError("exists", `Im Zielordner gibt es schon „${f.name}“.`);
+    f.parent = targetId; saveDB();
+  },
   settings() { return { ...SET }; },
   // PUT {apiBase}/settings – nur Rolle admin
   async saveSettings(v) {
@@ -1406,7 +1527,8 @@ async function reload() {
     Remote.rpc("get_settings")
   ]);
   if (settings) applySettings({ levelMember: settings.level_member, levelSilver: settings.level_silver, levelGold: settings.level_gold,
-    nextYearMonth: settings.next_year_month, monthDay: settings.month_claim_day, quarterDay: settings.quarter_claim_day });
+    nextYearMonth: settings.next_year_month, monthDay: settings.month_claim_day, quarterDay: settings.quarter_claim_day,
+    filesFolder: settings.files_folder || "" });
   CACHE.eventCats = (evCats || []).map(c => c.name);
   CACHE.events = (events || []).map(e => ({ key: `${e.id}|${e.occurrence}`, id: e.id, title: e.title, description: e.description || "",
     startsOn: e.starts_on, date: e.occurrence, time: e.start_time ? e.start_time.slice(0, 5) : "", location: e.location || "",
@@ -1523,10 +1645,21 @@ const RealApi = {
   async deleteEvent(id) { await Remote.rpc("delete_event", { p_event: id }); await reload(); },
   async voteEvent(id, occ, choice, reason) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice, p_reason: reason || null }); await reload(); },
   async deleteEventOccurrence(id, occ) { await Remote.rpc("delete_event_occurrence", { p_event: id, p_occurrence: occ }); await reload(); },
+  async listFiles(id) { return Remote.fn("chora-files", { action: "list", folderId: id || null }, true); },
+  async fileUrl(f) { return (await Remote.fn("chora-files", { action: "open", id: f.id }, true)).url; },
+  async uploadFile(folderId, file) {
+    if (file.size > FILE_MAX) throw new ApiError("size", "Erlaubt sind höchstens 5 MB.");
+    const data = await readAsBase64(file);
+    await Remote.fn("chora-files", { action: "upload", folderId, name: file.name || "Foto.jpg", type: file.type || "", data }, true);
+  },
+  async createFolder(parentId, name) { await Remote.fn("chora-files", { action: "mkdir", folderId: parentId, name }, true); },
+  async deleteFile(id) { await Remote.fn("chora-files", { action: "delete", id }, true); },
+  async renameFile(id, name) { await Remote.fn("chora-files", { action: "rename", id, name }, true); },
+  async moveFile(id, targetId) { await Remote.fn("chora-files", { action: "move", id, targetId }, true); },
   async restoreEvent(id, occ) { await Remote.rpc("restore_event", { p_event: id, p_occurrence: occ || null }); await reload(); },
   async saveSettings(v) {
     await Remote.rpc("save_settings", { p_level_member: v.levelMember, p_level_silver: v.levelSilver, p_level_gold: v.levelGold,
-      p_next_year_month: v.nextYearMonth, p_month_claim_day: v.monthDay, p_quarter_claim_day: v.quarterDay });
+      p_next_year_month: v.nextYearMonth, p_month_claim_day: v.monthDay, p_quarter_claim_day: v.quarterDay, p_files_folder: v.filesFolder || null });
     await reload();
   },
   myReports() {
@@ -1559,6 +1692,11 @@ const wide = () => matchMedia("(min-width: 768px)").matches;
 const $ = s => document.querySelector(s);
 
 const I = {
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  folderPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10.5v5M9.5 13h5"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
+  move: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13h6M13 10.5l2.5 2.5-2.5 2.5"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m9 11 1.6 1.6L14 9.5"/><path d="M9 16.5h6"/></svg>',
   points: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
@@ -1588,7 +1726,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "all", confirmEvDel: null, evEdit: null, lateVote: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "all", files: { path: [], items: null, loading: false, error: "", sort: { k: "name", dir: 1 }, menu: null, rename: null, del: null, move: null, newFolder: false, draft: null, busy: false }, confirmEvDel: null, evEdit: null, lateVote: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1722,9 +1860,10 @@ const ALL_TABS = [
   { key: "events", label: "Termine", icon: I.calendar },
   { key: "points", label: "Punkte", icon: I.points },
   { key: "members", label: "Mitglieder", icon: I.members },
+  { key: "files", label: "Dateien", icon: I.folder, show: () => CONFIG.mock || !!SET.filesFolder },
   { key: "profile", label: "Profil", icon: I.profile }
 ];
-const tabsFor = () => me().active === false ? ALL_TABS.filter(t => t.key === "profile") : ALL_TABS.filter(t => !t.role || can(t.role));
+const tabsFor = () => me().active === false ? ALL_TABS.filter(t => t.key === "profile") : ALL_TABS.filter(t => (!t.role || can(t.role)) && (!t.show || t.show()));
 
 function viewApp() {
   const TABS = tabsFor();
@@ -1737,6 +1876,7 @@ function viewApp() {
   const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const checksOpen = S.tab === "tasks" && S.checksOpen && can("aufgabenchecker");
+  const filesSub = S.tab === "files" && S.files.path.length > 1;
   const setOpen = S.tab === "profile" && S.settingsOpen && can("admin");
   const narrowDetail = !wide() && (setOpen || (S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
     || (S.tab === "events" && (S.evKey || evNew)));
@@ -1748,16 +1888,21 @@ function viewApp() {
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
        <button class="btn btn-primary btn-sm" data-act="new-task" aria-label="Neue Aufgabe">${I.plus}<span class="hide-narrow">Neue Aufgabe</span><span class="show-narrow">Neu</span></button>`
     : S.tab === "events" && can("terminverwalter") && !narrowDetail && !evNew
-      ? `<button class="btn btn-primary btn-sm" data-act="new-event" aria-label="Termin hinzufügen">${I.plus}<span class="hide-narrow">Termin hinzufügen</span><span class="show-narrow">Neu</span></button>` : "");
+      ? `<button class="btn btn-primary btn-sm" data-act="new-event" aria-label="Termin hinzufügen">${I.plus}<span class="hide-narrow">Termin hinzufügen</span><span class="show-narrow">Neu</span></button>` : "")
+    + (S.tab === "files" && can("dateiverwalter") && S.files.path.length
+      ? `<button class="btn btn-secondary btn-sm" data-act="f-new-folder" aria-label="Neuer Ordner">${I.folderPlus}<span class="hide-narrow">Neuer Ordner</span></button>
+         <label class="btn btn-primary btn-sm" for="f-upload" role="button" tabindex="0" aria-label="Datei oder Foto hochladen">${I.upload}<span class="hide-narrow">Hochladen</span><span class="show-narrow">Datei</span></label>
+         <input type="file" id="f-upload" class="sr" tabindex="-1">` : "");
   let content = "";
   if (S.tab === "tasks") content = checksOpen ? checksView() : tasksView();
   else if (S.tab === "points") content = pointsView();
   else if (S.tab === "members") content = membersView();
   else if (S.tab === "events") content = eventsView();
+  else if (S.tab === "files") content = filesView();
   else content = setOpen ? settingsView() : profileView();
   return `<div class="app" style="--tabs:${TABS.length}">
     <header class="topbar gutter${(addBtn.match(/<button/g) || []).length >= 3 ? " crowded" : ""}">
-      ${narrowDetail || checksOpen ? `<button class="icon-btn" data-act="back" aria-label="Zurück zur Liste">${I.back}</button>` : `<img src="${LOGO}" alt="">`}
+      ${narrowDetail || checksOpen || filesSub ? `<button class="icon-btn" data-act="back" aria-label="Zurück zur Liste">${I.back}</button>` : `<img src="${LOGO}" alt="">`}
       <h1>${title}</h1>${addBtn}
     </header>
     <nav class="nav${TABS.length > 5 ? " many" : ""}" aria-label="Bereiche">
@@ -2510,6 +2655,11 @@ function settingsView() {
       ${num("set-md", "monthDay", "Monatsaufgaben: aktueller Monat bis zum", 1, 28, "Tag", "Danach beginnt eine Übernahme frühestens im nächsten Monat.")}
       ${num("set-qd", "quarterDay", "Quartalsaufgaben: aktuelles Quartal bis zum", 1, 90, "Tag des Quartals", "Gezählt ab dem 1. Tag des Quartals, z. B. 15 = bis zum 15. Januar, April, Juli oder Oktober.")}
     </section>
+    <section class="set-group"><h3 class="h3">Dateien</h3>
+      <div class="field"><label for="set-ff">OneDrive-Ordner</label>
+        <input class="input" id="set-ff" name="filesFolder" placeholder="z. B. /Chor/Dateien" value="${esc(v.filesFolder || "")}" autocapitalize="off" autocorrect="off" spellcheck="false" ${S.errors.filesFolder ? 'aria-invalid="true" aria-describedby="e-filesFolder"' : ""}>
+        <div class="hint">Pfad in OneDrive. Im Reiter Dateien sieht man nur diesen Ordner und seine Unterordner. Leer lassen, um den Reiter auszublenden.</div>${fieldErr("filesFolder")}</div>
+    </section>
     <div class="report-actions">
       <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.save}Speichern</button>
       <button class="btn btn-ghost" type="button" data-act="settings-close">Abbrechen</button>
@@ -2519,7 +2669,8 @@ function settingsView() {
 function readSettings(f) {
   const n = k => { const x = f.elements[k].value.trim(); return x === "" ? NaN : Number(x); };
   return { levelMember: n("levelMember"), levelSilver: n("levelSilver"), levelGold: n("levelGold"),
-    nextYearMonth: n("nextYearMonth"), monthDay: n("monthDay"), quarterDay: n("quarterDay") };
+    nextYearMonth: n("nextYearMonth"), monthDay: n("monthDay"), quarterDay: n("quarterDay"),
+    filesFolder: (() => { let x = f.elements.filesFolder.value.trim().replace(/\\/g, "/").replace(/\/+$/, ""); if (x && !x.startsWith("/")) x = "/" + x; return x; })() };
 }
 function validateSettings(v) {
   const e = {}, int = (x, lo, hi) => Number.isInteger(x) && x >= lo && x <= hi;
@@ -2530,7 +2681,155 @@ function validateSettings(v) {
   else if (!e.levelSilver && v.levelGold <= v.levelSilver) e.levelGold = "Gold muss mehr Punkte brauchen als Silber.";
   if (!int(v.monthDay, 1, 28)) e.monthDay = "Bitte einen Tag von 1 bis 28.";
   if (!int(v.quarterDay, 1, 90)) e.quarterDay = "Bitte einen Tag von 1 bis 90.";
+  if (v.filesFolder && (v.filesFolder.length > 300 || /[:*?"<>|#%]/.test(v.filesFolder) || /\/\//.test(v.filesFolder))) e.filesFolder = "Bitte einen Pfad wie /Chor/Dateien angeben, ohne Zeichen wie : * ? \" < > | # %.";
   return e;
+}
+
+/* ---------- Dateien ---------- */
+const FILE_MAX = 5 * 1024 * 1024;
+const FILE_TYPES = [
+  [/^pdf$/, "PDF", "pdf"], [/^(jpe?g|png|gif|heic|heif|webp)$/, "Bild", "img"], [/^(mp3|m4a|wav|aac|ogg|flac)$/, "Audio", "audio"],
+  [/^(mp4|mov|m4v|webm)$/, "Video", "video"], [/^(docx?|odt|rtf|pages|txt|md)$/, "Text", "doc"], [/^(xlsx?|ods|csv|numbers)$/, "Tabelle", "sheet"],
+  [/^(pptx?|odp|key)$/, "Präsentation", "doc"], [/^(mscz?|musicxml|mxl|sib)$/, "Noten", "music"], [/^zip$/, "Archiv", "doc"]
+];
+function fileType(f) {
+  if (f.folder) return { label: "Ordner", kind: "folder" };
+  const m = f.name.match(/\.([^.]+)$/), ext = m ? m[1].toLowerCase() : "";
+  const hit = FILE_TYPES.find(([re]) => re.test(ext));
+  return hit ? { label: hit[1], kind: hit[2] } : { label: ext ? ext.toUpperCase() : "Datei", kind: "doc" };
+}
+const fmtSize = n => n == null ? "" : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1).replace(".", ",")} MB`;
+function badFileName(n) {
+  if (!n) return "Bitte gib einen Namen ein.";
+  if (n.length > 120) return "Der Name ist zu lang (höchstens 120 Zeichen).";
+  if (/[\\/:*?"<>|#%]/.test(n) || /^\.|\.$/.test(n)) return "Der Name darf keine Zeichen wie / \\ : * ? \" < > | # % enthalten und nicht mit einem Punkt beginnen oder enden.";
+  return "";
+}
+function sortFiles(items) {
+  const { k, dir } = S.files.sort;
+  const by = {
+    name: (a, b) => a.name.localeCompare(b.name, "de", { numeric: true }),
+    date: (a, b) => String(a.modified).localeCompare(String(b.modified)),
+    type: (a, b) => fileType(a).label.localeCompare(fileType(b).label, "de")
+  }[k];
+  return [...items].sort((a, b) => (!!b.folder - !!a.folder) || by(a, b) * dir || a.name.localeCompare(b.name, "de", { numeric: true }));
+}
+async function loadFolder(id) {
+  const F = S.files;
+  F.loading = true; F.error = ""; F.menu = null; F.rename = null; F.del = null; F.move = null; F.newFolder = false; render();
+  try {
+    const r = await Api.listFiles(id || null);
+    if (!F.path.length) F.path = [{ id: r.id, name: r.name }];
+    F.items = r.items;
+  } catch (err) { F.error = err.message; F.items = null; }
+  F.loading = false; render();
+}
+const FILE_ICON = {
+  folder: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6a2 2 0 0 1 1.5.7l1.2 1.3h6.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',
+  pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><text x="12" y="17" text-anchor="middle" font-size="5.6" font-weight="800" fill="currentColor" stroke="none" font-family="system-ui">PDF</text></svg>',
+  img: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>',
+  audio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg>',
+  video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/></svg>'
+};
+function filesView() {
+  const F = S.files, mgr = can("dateiverwalter");
+  if (!F.path.length) {
+    if (!F.loading && !F.error) setTimeout(() => loadFolder(null), 0);
+    return `<div class="pane"><div class="empty">${F.error ? `${I.pause}<div>${esc(F.error)}</div><button class="btn btn-secondary" data-act="f-retry">Nochmal versuchen</button>` : '<span class="spinner dark"></span><div>Dateien werden geladen …</div>'}</div></div>`;
+  }
+  const cur = F.path[F.path.length - 1], atRoot = F.path.length === 1;
+  const crumbs = F.path.map((p, i) => i === F.path.length - 1
+    ? `<span aria-current="page">${esc(p.name)}</span>`
+    : `<button class="link" data-act="f-crumb" data-i="${i}">${esc(p.name)}</button>`).join('<span class="crumb-sep">›</span>');
+  const sortChip = (k, label) => {
+    const on = F.sort.k === k;
+    return `<button class="chip" data-act="f-sort" data-k="${k}" aria-pressed="${on}">${label}${on ? `<span class="sort-dir" aria-label="${F.sort.dir > 0 ? "aufsteigend" : "absteigend"}">${F.sort.dir > 0 ? "↑" : "↓"}</span>` : ""}</button>`;
+  };
+  const folderBar = mgr ? (F.newFolder
+    ? `<form class="f-inline" id="f-mkdir" novalidate><label class="sr" for="f-newname">Name des neuen Ordners</label>
+        <input class="input" id="f-newname" name="name" placeholder="Name des neuen Ordners" value="${esc(F.draft || "")}" ${S.errors.fname ? 'aria-invalid="true"' : ""}>
+        <div class="f-inline-btns"><button class="btn btn-primary btn-sm" type="submit" ${F.busy ? "disabled" : ""}>${I.plus}Anlegen</button><button class="btn btn-ghost btn-sm" type="button" data-act="f-cancel">Abbrechen</button></div>
+        ${fieldErr("fname")}</form>`
+    : F.del === "folder"
+      ? `<div class="confirm" role="alert">Ordner „${esc(cur.name)}“ mit allem Inhalt löschen?
+          <div><button class="btn btn-primary btn-sm" data-act="f-del-yes" ${F.busy ? "disabled" : ""}>Löschen</button><button class="btn btn-secondary btn-sm" data-act="f-cancel">Abbrechen</button></div></div>`
+      : !atRoot ? `<div class="f-folder-actions"><button class="btn btn-ghost btn-sm danger-text" data-act="f-del-folder">${I.trash}Diesen Ordner löschen</button></div>` : "") : "";
+  const items = F.items ? sortFiles(F.items) : [];
+  const row = f => {
+    const t = fileType(f), open = F.menu === f.id;
+    const sub = [t.label, f.modified ? fmtDate(isoLocal(f.modified)) : "", f.folder ? (f.count != null ? `${f.count} ${f.count === 1 ? "Element" : "Elemente"}` : "") : fmtSize(f.size)].filter(Boolean).join(" · ");
+    let extra = "";
+    if (mgr && !f.folder && open) {
+      if (F.rename === f.id) extra = `<form class="f-inline" id="f-rename" data-id="${esc(f.id)}" novalidate><label class="sr" for="f-rn">Neuer Name</label>
+          <input class="input" id="f-rn" name="name" value="${esc(F.draft != null ? F.draft : f.name)}" ${S.errors.fname ? 'aria-invalid="true"' : ""}>
+          <div class="f-inline-btns"><button class="btn btn-primary btn-sm" type="submit" ${F.busy ? "disabled" : ""}>${I.save}Umbenennen</button><button class="btn btn-ghost btn-sm" type="button" data-act="f-cancel">Abbrechen</button></div>${fieldErr("fname")}</form>`;
+      else if (F.del === f.id) extra = `<div class="confirm" role="alert">„${esc(f.name)}“ löschen?
+          <div><button class="btn btn-primary btn-sm" data-act="f-del-yes" ${F.busy ? "disabled" : ""}>Löschen</button><button class="btn btn-secondary btn-sm" data-act="f-cancel">Abbrechen</button></div></div>`;
+      else if (F.move && F.move.id === f.id) extra = movePicker();
+      else extra = `<div class="f-actions"><button class="btn btn-secondary btn-sm" data-act="f-rename" data-id="${esc(f.id)}">${I.edit}Umbenennen</button>
+          <button class="btn btn-secondary btn-sm" data-act="f-move" data-id="${esc(f.id)}">${I.move}Verschieben</button>
+          <button class="btn btn-secondary btn-sm danger-text" data-act="f-del" data-id="${esc(f.id)}">${I.trash}Löschen</button></div>`;
+    }
+    return `<li class="f-item${open ? " open" : ""}"><div class="f-row">
+        <button class="row gutter f-main" data-act="${f.folder ? "f-open-folder" : "f-open-file"}" data-id="${esc(f.id)}">
+          <span class="f-ico ${t.kind}">${FILE_ICON[t.kind] || FILE_ICON.doc}</span>
+          <span class="row-main"><span class="row-title f-name">${esc(f.name)}</span><span class="row-sub">${sub}</span></span>
+          ${f.folder ? I.chev : ""}</button>
+        ${mgr && !f.folder ? `<button class="icon-btn f-more" data-act="f-menu" data-id="${esc(f.id)}" aria-expanded="${open}" aria-label="Aktionen für ${esc(f.name)}">${I.dots}</button>` : ""}
+      </div>${extra ? `<div class="f-extra gutter">${extra}</div>` : ""}</li>`;
+  };
+  return `<div class="pane"><div class="files">
+    <div class="f-head gutter">
+      <nav class="crumbs" aria-label="Ordnerpfad">${crumbs}</nav>
+      <div class="chips" role="group" aria-label="Sortieren">${sortChip("name", "Name")}${sortChip("date", "Datum")}${sortChip("type", "Typ")}</div>
+      ${F.busy && !F.move ? '<div class="f-busy"><span class="spinner dark"></span>Einen Moment …</div>' : ""}
+      ${folderBar}
+    </div>
+    ${F.loading && !F.items ? '<div class="empty"><span class="spinner dark"></span></div>'
+      : F.error ? `<div class="empty">${I.pause}<div>${esc(F.error)}</div><button class="btn btn-secondary" data-act="f-retry">Nochmal versuchen</button></div>`
+      : items.length ? `<ul class="rows f-list${F.loading ? " dim" : ""}">${items.map(row).join("")}</ul>`
+      : `<div class="empty">${FILE_ICON.folder}<div>Dieser Ordner ist leer.${mgr ? "<br>Lade oben eine Datei hoch oder lege einen Ordner an." : ""}</div></div>`}
+  </div></div>`;
+}
+function movePicker() {
+  const M = S.files.move, cur = M.path[M.path.length - 1], here = S.files.path[S.files.path.length - 1];
+  const crumbs = M.path.map((p, i) => i === M.path.length - 1 ? `<b>${esc(p.name)}</b>` : `<button class="link" data-act="f-mv-crumb" data-i="${i}">${esc(p.name)}</button>`).join('<span class="crumb-sep">›</span>');
+  const folders = (M.items || []).filter(x => x.folder).sort((a, b) => a.name.localeCompare(b.name, "de", { numeric: true }));
+  return `<div class="f-move">
+    <div class="f-move-head"><span>Verschieben nach:</span> ${crumbs}</div>
+    ${M.items == null ? '<div class="f-busy"><span class="spinner dark"></span>Ordner werden geladen …</div>'
+      : folders.length ? `<ul class="f-move-list">${folders.map(x => `<li><button data-act="f-mv-into" data-id="${esc(x.id)}" data-name="${esc(x.name)}">${FILE_ICON.folder}<span>${esc(x.name)}</span>${I.chev}</button></li>`).join("")}</ul>`
+      : '<p class="row-sub" style="margin:4px 0">Keine Unterordner.</p>'}
+    <div class="f-inline-btns"><button class="btn btn-primary btn-sm" data-act="f-mv-here" ${cur.id === here.id || S.files.busy ? "disabled" : ""}>${I.move}Hierher verschieben</button>
+      <button class="btn btn-ghost btn-sm" data-act="f-cancel">Abbrechen</button></div>
+    ${cur.id === here.id ? '<p class="row-sub" style="margin:0">Die Datei liegt schon in diesem Ordner. Wähle einen anderen.</p>' : ""}
+  </div>`;
+}
+async function loadMoveFolder(id, name, path) {
+  const M = S.files.move; if (!M) return;
+  M.path = path; M.items = null; render();
+  try { const r = await Api.listFiles(id); if (S.files.move === M) { M.items = r.items; render(); } }
+  catch (err) { toast(err.message); }
+}
+async function fileOp(fn, okMsg) {
+  const F = S.files;
+  F.busy = true; render();
+  try { await fn(); F.busy = false; F.menu = F.rename = F.del = F.move = null; F.newFolder = false; F.draft = null; S.errors = {}; if (okMsg) toast(okMsg); }
+  catch (err) { F.busy = false; toast(err.message); }
+  const cur = F.path[F.path.length - 1];
+  try { F.items = (await Api.listFiles(cur.id)).items; } catch (err) { F.error = err.message; }
+  render();
+}
+function readAsBase64(file) {
+  return new Promise((ok, bad) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(",")[1] || "");
+    r.onerror = () => bad(new ApiError("read", "Die Datei konnte nicht gelesen werden."));
+    r.readAsDataURL(file);
+  });
 }
 
 /* ---------- Toast ---------- */
@@ -2563,6 +2862,7 @@ function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top:
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
   S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null; S.lateVote = null; S.settingsOpen = false; S.setDraft = null; S.checksOpen = false;
+  if (tab === "files") { const F = S.files; F.menu = F.rename = F.del = F.move = null; F.newFolder = false; if (F.path.length) loadFolder(F.path[F.path.length - 1].id); }
   if (!wide()) { S.taskId = null; S.memberId = null; S.evKey = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -2580,6 +2880,7 @@ document.addEventListener("click", async e => {
   if (a === "back") {
     if (S.tab === "events") { if (S.evEdit) { S.evEdit = null; S.evDraft = null; S.errors = {}; S.error = ""; } else if (S.evNew) { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; } else { S.evKey = null; S.confirmEvDel = null; } return render(); }
     if (S.checksOpen) { S.checksOpen = false; S.rejecting = null; return render(); }
+    if (S.tab === "files" && S.files.path.length > 1) { S.files.path.pop(); return loadFolder(S.files.path[S.files.path.length - 1].id); }
     if (S.settingsOpen) { S.settingsOpen = false; S.setDraft = null; S.errors = {}; S.error = ""; return render(); }
     if (S.cats) { S.cats = false; S.catEdit = null; S.errors = {}; return render(); }
     if (S.memberEdit) { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; return render(); }
@@ -2653,6 +2954,47 @@ document.addEventListener("click", async e => {
   if (a === "group") { S.group = el.dataset.g; if (wide()) S.taskId = null; return render(); }
   if (a === "year") { S.year = Number(el.dataset.y); return render(); }
   if (a === "pf") { S.pf = el.dataset.v; return render(); }
+  if (a === "f-retry") { S.files.error = ""; return loadFolder(S.files.path.length ? S.files.path[S.files.path.length - 1].id : null); }
+  if (a === "f-sort") { const F = S.files, k = el.dataset.k; F.sort = { k, dir: F.sort.k === k ? -F.sort.dir : (k === "date" ? -1 : 1) }; return render(); }
+  if (a === "f-crumb") { const F = S.files; F.path = F.path.slice(0, Number(el.dataset.i) + 1); return loadFolder(F.path[F.path.length - 1].id); }
+  if (a === "f-open-folder") { const F = S.files, f = (F.items || []).find(x => x.id === el.dataset.id); if (!f) return; F.path.push({ id: f.id, name: f.name }); loadFolder(f.id); scrollDetailTop(); return; }
+  if (a === "f-open-file") {
+    const f = (S.files.items || []).find(x => x.id === el.dataset.id); if (!f) return;
+    const w = CONFIG.mock ? null : window.open("", "_blank");
+    try { const url = await Api.fileUrl(f); if (w) w.location.href = url; else window.open(url, "_blank"); }
+    catch (err) { if (w) w.close(); toast(err.message); }
+    return;
+  }
+  if (a === "f-menu") { const F = S.files, id = el.dataset.id; F.menu = F.menu === id ? null : id; F.rename = F.del = F.move = null; F.draft = null; S.errors = {}; return render(); }
+  if (a === "f-cancel") { const F = S.files; F.rename = F.del = F.move = null; F.newFolder = false; F.draft = null; if (!F.menu) F.menu = null; S.errors = {}; return render(); }
+  if (a === "f-rename") { const F = S.files; F.rename = el.dataset.id; F.draft = null; S.errors = {}; render(); const i = $("#f-rn"); if (i) { i.focus(); const dot = i.value.lastIndexOf("."); i.setSelectionRange(0, dot > 0 ? dot : i.value.length); } return; }
+  if (a === "f-del") { S.files.del = el.dataset.id; return render(); }
+  if (a === "f-del-folder") { const F = S.files; F.del = "folder"; F.menu = null; F.newFolder = false; return render(); }
+  if (a === "f-new-folder") { const F = S.files; F.newFolder = true; F.del = null; F.menu = null; F.draft = null; S.errors = {}; render(); const i = $("#f-newname"); if (i) i.focus(); return; }
+  if (a === "f-del-yes") {
+    const F = S.files;
+    if (F.del === "folder") {
+      const cur = F.path[F.path.length - 1];
+      F.busy = true; render();
+      try { await Api.deleteFile(cur.id); F.path.pop(); F.busy = false; F.del = null; toast(`Ordner „${cur.name}“ gelöscht.`); }
+      catch (err) { F.busy = false; toast(err.message); }
+      return loadFolder(F.path[F.path.length - 1].id);
+    }
+    const f = (F.items || []).find(x => x.id === F.del); if (!f) return;
+    return fileOp(() => Api.deleteFile(f.id), `„${f.name}“ gelöscht.`);
+  }
+  if (a === "f-move") {
+    const F = S.files, id = el.dataset.id;
+    F.move = { id, path: [F.path[0]], items: null }; F.rename = F.del = null; render();
+    return loadMoveFolder(F.path[0].id, F.path[0].name, [F.path[0]]);
+  }
+  if (a === "f-mv-into") { const M = S.files.move; if (!M) return; return loadMoveFolder(el.dataset.id, el.dataset.name, [...M.path, { id: el.dataset.id, name: el.dataset.name }]); }
+  if (a === "f-mv-crumb") { const M = S.files.move; if (!M) return; const path = M.path.slice(0, Number(el.dataset.i) + 1); const t = path[path.length - 1]; return loadMoveFolder(t.id, t.name, path); }
+  if (a === "f-mv-here") {
+    const M = S.files.move; if (!M) return;
+    const f = (S.files.items || []).find(x => x.id === M.id), target = M.path[M.path.length - 1];
+    return fileOp(() => Api.moveFile(M.id, target.id), `„${f ? f.name : "Datei"}“ nach „${target.name}“ verschoben.`);
+  }
   if (a === "checks-open") { S.checksOpen = true; S.cats = false; S.editTask = null; render(); scrollDetailTop(); return; }
   if (a === "goto-task") { const id = el.dataset.id; setTab("tasks"); S.taskId = id; S.q = ""; S.onlyMine = false; render(); scrollDetailTop(); return; }
   if (a === "only-mine") { S.onlyMine = !S.onlyMine; if (wide()) S.taskId = null; return render(); }
@@ -2700,6 +3042,13 @@ document.addEventListener("click", async e => {
 function scrollDetailTop() { const d = $("#detail-pane") || $(".pane"); if (d) d.scrollTop = 0; }
 document.addEventListener("change", async e => {
   const el = e.target;
+  if (el.id === "f-upload") {
+    const file = el.files && el.files[0]; el.value = "";
+    if (!file) return;
+    if (file.size > FILE_MAX) { toast(`„${file.name}“ ist ${fmtSize(file.size)} groß. Erlaubt sind höchstens 5 MB.`); return; }
+    const cur = S.files.path[S.files.path.length - 1];
+    return fileOp(() => Api.uploadFile(cur.id, file), `„${file.name}“ hochgeladen.`);
+  }
   if (el.id === "ev-weekly" || el.id === "ev-dlkind") {
     const weekly = $("#ev-weekly").checked, kind = $("#ev-dlkind");
     const optDate = kind.querySelector('option[value="date"]');
@@ -2856,6 +3205,15 @@ document.addEventListener("submit", async e => {
     }
     catch (err) { go({ busy: false, error: err.message }); }
     return;
+  }
+  if (f.id === "f-mkdir" || f.id === "f-rename") {
+    const F = S.files, name = f.elements.name.value.trim(), bad = badFileName(name);
+    F.draft = f.elements.name.value;
+    if (bad) { S.errors = { fname: bad }; return render(); }
+    S.errors = {};
+    const cur = F.path[F.path.length - 1];
+    if (f.id === "f-mkdir") return fileOp(() => Api.createFolder(cur.id, name), `Ordner „${name}“ angelegt.`);
+    return fileOp(() => Api.renameFile(f.dataset.id, name), "Umbenannt.");
   }
   if (f.id === "f-settings") {
     const v = readSettings(f), errors = validateSettings(v);
