@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.3";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.11.0";</script>
 </head>
 <body>
 <style>
@@ -177,16 +177,17 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-
 .main { grid-area: main; display: flex; min-height: 0; min-width: 0; }
 
 .nav {
-  grid-area: nav; display: grid; grid-template-columns: repeat(var(--tabs, 4), 1fr);
+  grid-area: nav; display: grid; grid-template-columns: repeat(var(--tabs, 4), minmax(0, 1fr));
   background: var(--surface); border-top: 1px solid var(--line);
   padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
 }
 .nav-logo { display: none; }
+@media (max-width: 420px) { .nav.many button { font-size: 11px; } .nav.many .ico { width: min(48px, 100%); } }
 .nav button {
   display: grid; justify-items: center; align-content: center; gap: 2px; min-height: var(--nav-h);
-  border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600;
+  border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; min-width: 0; white-space: nowrap; letter-spacing: -.01em;
 }
-.nav .ico { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 15px; transition: background .15s ease; }
+.nav .ico { display: grid; place-items: center; width: min(56px, 100%); height: 30px; border-radius: 15px; transition: background .15s ease; }
 .nav svg { width: 22px; height: 22px; }
 .nav button[aria-current="page"] { color: var(--ink); }
 .nav button[aria-current="page"] .ico { background: var(--green); color: var(--on-green); }
@@ -447,6 +448,41 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .check-pts.pending { color: var(--muted); }
 .check .note { grid-column: 1 / -1; font-size: 14px; color: var(--orange-ink); overflow-wrap: anywhere; }
 .points .chips { margin-bottom: 4px; }
+/* ---------- Termine ---------- */
+.ev-date { flex: none; width: 48px; display: grid; justify-items: center; gap: 1px; padding: 6px 0; border-radius: 10px; background: var(--surface-2); line-height: 1.1; }
+.ev-date small { font-size: 11px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ev-date b { font-family: var(--display); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.row.overdue { background: var(--orange-soft); }
+.row.overdue:hover { background: var(--orange-soft); }
+.row.overdue .ev-date { background: var(--orange); color: var(--on-orange); }
+.row.overdue .ev-date small { color: inherit; }
+.row.deleted .row-title { text-decoration: line-through; }
+.row.deleted .row-title, .row.deleted .row-sub, .row.deleted .ev-date { opacity: .55; }
+.ev-line { font-size: 13px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev-line.warn { color: var(--orange-ink); }
+.choice { display: inline-block; font-size: 12px; font-weight: 750; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.choice.yes { background: var(--green); color: var(--on-green); }
+.choice.ifneeded { background: var(--green-soft); color: var(--green-ink); }
+.choice.maybe { background: var(--surface-2); color: var(--ink); }
+.choice.no { background: var(--surface-2); color: var(--muted); }
+.tag-del { background: var(--surface-2); color: var(--muted); }
+.ev-when { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.vote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vote-grid button { min-height: 48px; padding: 6px 10px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 650; font-size: 15px; }
+.vote-grid button[aria-pressed="true"] { border-color: var(--green-ink); background: var(--green-soft); color: var(--green-ink); }
+.vote-grid button[aria-pressed="true"][data-c="yes"] { border-color: var(--green); background: var(--green); color: var(--on-green); }
+.vote-grid button[aria-pressed="true"][data-c="no"] { border-color: var(--muted); background: var(--surface-2); color: var(--ink); }
+.vote-grid button:disabled { opacity: .5; cursor: default; }
+.staff { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.staff div { display: grid; justify-items: center; padding: 8px 0; border-radius: 10px; background: var(--surface-2); }
+.staff span { font-size: 12px; font-weight: 750; color: var(--muted); }
+.staff b { font-family: var(--display); font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.staff .low { background: var(--orange-soft); color: var(--orange-ink); }
+.staff .low span { color: inherit; }
+.pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pre a { color: var(--orange-ink); }
+.check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.check-row input { width: 22px; height: 22px; accent-color: var(--orange); }
 /* ---------- Kategorien ---------- */
 .hide-narrow { display: none; }
 @media (min-width: 480px) { .hide-narrow { display: inline; } .show-narrow { display: none; } }
@@ -617,6 +653,40 @@ function segments(t, year) {
   return out;
 }
 function claimRange(p, iv) { const e = effEnd(p, iv); return e == null ? `ab ${unitLabel(p.start, iv)}` : rangeLabel(p.start, e, iv); }
+/* ---------- Termine: Datumsrechnung mit ISO-Daten ---------- */
+const WD = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const WD_LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const dObj = iso => new Date(iso + "T12:00:00Z");
+const dIso = d => d.toISOString().slice(0, 10);
+const dAdd = (iso, n) => { const d = dObj(iso); d.setUTCDate(d.getUTCDate() + n); return dIso(d); };
+const dAddMonths = (iso, n) => {
+  const d = dObj(iso), day = d.getUTCDate(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + n);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, last)); return dIso(d);
+};
+const dDiff = (a, b) => Math.round((dObj(b) - dObj(a)) / 86400000);
+const wdOf = iso => dObj(iso).getUTCDay();
+const fmtShort = iso => `${WD[wdOf(iso)]} ${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
+const fmtLong = iso => `${WD_LONG[wdOf(iso)]}, ${Number(iso.slice(8, 10))}. ${MONTHS_LONG[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+const VOICE_KEYS = ["S1", "S2", "A1", "A2", "T", "B"];
+const CHOICES = [
+  { key: "yes", label: "Ich nehme teil", short: "Nehme teil" },
+  { key: "ifneeded", label: "Wenn nötig", short: "Wenn nötig" },
+  { key: "maybe", label: "Unentschieden", short: "Unentschieden" },
+  { key: "no", label: "Ich nehme nicht teil", short: "Nehme nicht teil" }
+];
+const DEADLINES = { none: "Keine Frist", "1d": "1 Tag vorher", "1w": "1 Woche vorher", "1m": "1 Monat vorher", date: "Bestimmtes Datum" };
+// Rückmeldung bis einschließlich diesem Tag
+function eventDeadline(kind, date, occ) {
+  return kind === "1d" ? dAdd(occ, -1) : kind === "1w" ? dAdd(occ, -7) : kind === "1m" ? dAddMonths(occ, -1) : kind === "date" ? date : null;
+}
+const evDeadlinePassed = o => !!o.deadline && todayISO() > o.deadline;
+const evOverdue = o => !o.deletedAt && evDeadlinePassed(o) && !o.myChoice;
+// Nach Ablauf der Frist: Stimmen mit weniger als drei Zusagen ("wenn nötig" zählt mit)
+const evUnderstaffed = o => (!o.deletedAt && evDeadlinePassed(o) ? VOICE_KEYS.filter(v => (o.staffing[v] || 0) < 3).map(v => [v, o.staffing[v] || 0]) : []);
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+}
 const allReported = (c, iv) => { const e = effEnd(c, iv); return e != null && reportStart(c, iv) > e; };
 const askKeep = (c, iv, e) => { const eff = effEnd(c, iv); return iv !== "J3" && (eff == null || e < eff); };
 function reportStart(c, iv) { return c.doneUntil != null ? c.doneUntil + LEN[iv] : c.start; }
@@ -696,7 +766,11 @@ function seed() {
     m("Ute", "Lehmann", "A2", "A2-Ute", 20, 8, [], false), m("Jonas", "Fischer", "T", "T-Jonas", 32, 32, ["aufgabenchecker"]),
     m("Paul", "Richter", "T", "T-Paul", 22, 10), m("Felix", "Wolf", "T", "T-Felix", 15, 3),
     m("Thomas", "Braun", "B", "B-Thomas", 50, 41, ["mitgliedsverwalter", "aufgabenchecker"]), m("Martin", "Zimmermann", "B", "B-Martin", 28, 20),
-    m("Stefan", "Hartmann", "B", "B-Stefan", 12, 0, [], false), m("Elena", "Schröder", "U", "", 10, 4)
+    m("Stefan", "Hartmann", "B", "B-Stefan", 12, 0, [], false), m("Elena", "Schröder", "U", "", 10, 4),
+    m("Lena", "Vogel", "S1", "S1-Lena", 24, 18), m("Paula", "Roth", "S1", "S1-Paula", 30, 22), m("Greta", "Lange", "S2", "S2-Greta", 20, 20),
+    m("Nina", "Kaiser", "S2", "S2-Nina", 16, 9), m("Ruth", "Peters", "A1", "A1-Ruth", 35, 30), m("Hanna", "Busch", "A1", "A1-Hanna", 22, 12),
+    m("Ilse", "Frank", "A2", "A2-Ilse", 40, 36), m("Vera", "Jung", "A2", "A2-Vera", 18, 6), m("Moritz", "Berg", "T", "T-Moritz", 26, 14),
+    m("Lukas", "Sauer", "B", "B-Lukas", 28, 28), m("Jakob", "Arnold", "B", "B-Jakob", 14, 5)
   ];
   const since = {
     "S1-Anna": "2015-09-01", "S1-Sophie": "2021-03-15", "S2-Clara": "2019-01-10", "S2-Marie-Luise": "2023-09-05",
@@ -710,7 +784,30 @@ function seed() {
     { id: "r2", by: "m-T-Paul", taskId: "t10", date: "2026-11-02", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 5 },
     { id: "r3", by: "m-A2-Katrin", taskId: "t15", date: "2026-10-30", status: "reported", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), points: 15 }
   ];
-  return { v: 9, tasks, members, reports, categories: [...CATEGORY_ORDER], users: {}, session: null, ui: {} };
+  // Termine relativ zum heutigen Tag, damit die Beispiele immer passen
+  const T0 = todayISO();
+  const nextTue = dAdd(T0, (2 - wdOf(T0) + 7) % 7);
+  const events = [
+    { id: "e1", title: "Chorprobe", description: "Wir proben das Weihnachtsprogramm. Bitte die Noten mitbringen.", startsOn: dAdd(nextTue, -21), time: "19:30",
+      location: "Gemeindehaus St. Paul, großer Saal", directions: "Eingang über den Innenhof. Fahrräder bitte im Hof abstellen.",
+      category: "Probe", deadlineKind: "1d", deadlineDate: null, weekly: true, createdBy: "m-B-Thomas", turnout: 0.85 },
+    { id: "e2", title: "Sonderprobe Weihnachtskonzert", description: "Ganztägig mit Mittagspause. Für Getränke ist gesorgt.", startsOn: dAdd(T0, 5), time: "10:00",
+      location: "Gemeindehaus St. Paul", directions: "", category: "Sonderprobe", deadlineKind: "1w", deadlineDate: null, weekly: false,
+      createdBy: "m-A2-Katrin", turnout: 0.6, low: { T: 0.25, B: 0.45 } },
+    { id: "e3", title: "Auftritt Weihnachtsmarkt", description: "Drei Lieder aus dem Adventsprogramm, Dauer etwa 20 Minuten.", startsOn: dAdd(T0, 4), time: "16:30",
+      location: "Marktplatz, Bühne vor dem Rathaus", directions: "Treffpunkt um 16:00 am Hintereingang des Rathauses.\nhttps://www.openstreetmap.org",
+      category: "Auftritt", deadlineKind: "date", deadlineDate: dAdd(T0, -1), weekly: false, createdBy: "m-B-Thomas", turnout: 0.55, low: { A1: 0.2, T: 0.3 } },
+    { id: "e4", title: "Weihnachtskonzert", description: "Einsingen um 16:00. Konzertkleidung: schwarz mit roter Akzentfarbe.", startsOn: dAdd(T0, 40), time: "17:00",
+      location: "Stadtkirche", directions: "Sakristei-Eingang an der Nordseite.", category: "Konzert", deadlineKind: "1m", deadlineDate: null, weekly: false,
+      createdBy: "m-B-Thomas", turnout: 0.7 },
+    { id: "e5", title: "Stimmprobe Tenor und Bass", description: "", startsOn: dAdd(T0, 9), time: "18:00", location: "Musikschule, Raum 4", directions: "",
+      category: "Stimmprobe", deadlineKind: "1d", deadlineDate: null, weekly: false, createdBy: "m-T-Jonas", turnout: 0.6 },
+    { id: "e6", title: "Probe im Pfarrsaal", description: "", startsOn: dAdd(T0, 2), time: "19:30", location: "Pfarrsaal", directions: "",
+      category: "Probe", deadlineKind: "1d", deadlineDate: null, weekly: false, createdBy: "m-B-Thomas", turnout: 0.8,
+      deletedAt: new Date(Date.now() - 2 * 86400000).toISOString(), deletedBy: "m-B-Thomas" }
+  ];
+  return { v: 11, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes: {},
+    eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
   return {
@@ -763,10 +860,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v9";
+const KEY = "chora.v11";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 9) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 11) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -939,6 +1036,29 @@ const Api = {
       return { ...r, title: t.title, interval: t.interval };
     });
   },
+  events() { return mockEvents(); },
+  eventCategories() { return DB.eventCategories || []; },
+  async addEvent(d) {
+    await wait();
+    const e = { id: "e" + Date.now().toString(36), ...d, createdBy: myKey(), turnout: null };
+    DB.events.push(e); saveDB();
+    return e.id;
+  },
+  async deleteEvent(id) {
+    await wait();
+    const e = DB.events.find(x => x.id === id);
+    if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
+    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Löschen kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    e.deletedAt = new Date().toISOString(); e.deletedBy = myKey(); saveDB();
+  },
+  async voteEvent(id, occ, choice) {
+    await wait(120);
+    const e = DB.events.find(x => x.id === id);
+    if (!e || e.deletedAt) throw new ApiError("deleted", "Der Termin wurde gelöscht. Abstimmen ist nicht mehr möglich.");
+    if (occ < todayISO()) throw new ApiError("past", "Der Termin ist schon vorbei.");
+    const key = `${id}|${occ}`;
+    DB.eventVotes[key] = { ...(DB.eventVotes[key] || {}), [myKey()]: choice }; saveDB();
+  },
   myClaim(id) {
     const u = me(), t = DB.tasks.find(x => x.id === id);
     const c = u && u.claimInfo && u.claimInfo[id];
@@ -1051,6 +1171,40 @@ const Api = {
   }
 };
 
+// Erfundene Rückmeldungen der Beispiel-Mitglieder (gleichbleibend pro Termin)
+function hash01(str) { let h = 2166136261; for (const c of str) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 1000) / 1000; }
+function synthChoice(m, e, key) {
+  if (e.turnout == null) return null;
+  const p = e.low && e.low[m.voice] != null ? e.low[m.voice] : e.turnout, h = hash01(m.id + key);
+  return h < p * 0.8 ? "yes" : h < p ? "ifneeded" : h < p + 0.12 ? "maybe" : h < p + 0.3 ? "no" : null;
+}
+function mockEvents() {
+  const today = todayISO(), weekAgo = Date.now() - 7 * 86400000, out = [];
+  (DB.events || []).forEach(e => {
+    if (e.deletedAt && Date.parse(e.deletedAt) <= weekAgo) return;
+    const first = e.weekly && e.startsOn < today ? dAdd(e.startsOn, Math.ceil(dDiff(e.startsOn, today) / 7) * 7) : e.startsOn;
+    const occs = e.weekly ? Array.from({ length: 8 }, (_, i) => dAdd(first, i * 7)) : [first];
+    occs.filter(o => o >= today).forEach(occ => {
+      const key = `${e.id}|${occ}`, votes = (DB.eventVotes || {})[key] || {};
+      const staffing = Object.fromEntries(VOICE_KEYS.map(v => [v, 0]));
+      DB.members.filter(m => m.active && m.voice !== "U").forEach(m => {
+        const c = votes[m.id] !== undefined ? votes[m.id] : synthChoice(m, e, key);
+        if (c === "yes" || c === "ifneeded") staffing[m.voice]++;
+      });
+      Object.values(DB.users).forEach(u => {
+        if (!u.profile || u.active === false || u.profile.voice === "U") return;
+        const c = votes["u:" + u.email];
+        if (c === "yes" || c === "ifneeded") staffing[u.profile.voice]++;
+      });
+      out.push({ key, id: e.id, title: e.title, description: e.description || "", startsOn: e.startsOn, date: occ, time: e.time || "",
+        location: e.location || "", directions: e.directions || "", category: e.category, weekly: !!e.weekly, deadlineKind: e.deadlineKind,
+        deadline: eventDeadline(e.deadlineKind, e.deadlineDate, occ), deletedAt: e.deletedAt || null,
+        creator: Api.periodChorId({ by: e.createdBy }), canDelete: e.createdBy === myKey() || can("mitgliedsverwalter"),
+        myChoice: votes[myKey()] || null, staffing });
+    });
+  });
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.title.localeCompare(b.title, "de"));
+}
 function mockClaims(by) {
   return DB.tasks.flatMap(t => (t.periods || []).filter(p => p.by === by && claimActive(p, t.interval)).map(p => {
     const own = String(by).startsWith("u:") ? ((DB.users[by.slice(2)] || {}).claimInfo || {})[t.id] : null;
@@ -1063,7 +1217,7 @@ function mockClaims(by) {
 /* =====================================================================
    Echte Daten: Supabase (Datenbank) + Edge Functions (WorkOS-Anmeldung)
    ===================================================================== */
-const CACHE = { me: null, reports: {}, claims: {}, lastCheck: {}, points: null, members: [], pending: [], categories: [] };
+const CACHE = { me: null, reports: {}, claims: {}, lastCheck: {}, points: null, members: [], pending: [], categories: [], events: [], eventCats: [] };
 function isoLocal(ts) {
   if (!ts) return "";
   const d = new Date(ts);
@@ -1127,11 +1281,18 @@ async function reload() {
   const m = await Remote.rpc("get_me");
   if (!m) { CACHE.me = { profile: null, roles: [], claims: [], checks: [], email: S.email }; DB.tasks = []; return; }
   const roles = m.roles || [];
-  const [tasks, points, checks, members, pending, cats] = await Promise.all([
+  const [tasks, points, checks, members, pending, cats, events, evCats] = await Promise.all([
     Remote.rpc("task_list"), Remote.rpc("my_points"), Remote.rpc("my_checks"), Remote.rpc("member_list"),
     roles.includes("aufgabenchecker") ? Remote.rpc("pending_reports") : Promise.resolve([]),
-    Remote.rest("categories?select=name&order=name", "GET")
+    Remote.rest("categories?select=name&order=name", "GET"),
+    Remote.rpc("event_list"),
+    Remote.rest("event_categories?select=name&order=sort", "GET")
   ]);
+  CACHE.eventCats = (evCats || []).map(c => c.name);
+  CACHE.events = (events || []).map(e => ({ key: `${e.id}|${e.occurrence}`, id: e.id, title: e.title, description: e.description || "",
+    startsOn: e.starts_on, date: e.occurrence, time: e.start_time ? e.start_time.slice(0, 5) : "", location: e.location || "",
+    directions: e.directions || "", category: e.category, weekly: e.weekly, deadlineKind: e.deadline_kind, deadline: e.deadline,
+    deletedAt: e.deleted_at, creator: e.creator_chor_id || "", canDelete: e.can_delete, myChoice: e.my_choice, staffing: e.staffing || {} }));
   CACHE.categories = (cats || []).map(c => c.name).sort((a, b) => a.localeCompare(b, "de"));
   DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
     interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max,
@@ -1225,6 +1386,17 @@ const RealApi = {
   async deleteCategory(name) { await Remote.rpc("delete_category", { p_name: name }); await reload(); },
   myReport(taskId) { return CACHE.reports[taskId]; },
   myClaim(taskId) { return CACHE.claims[taskId]; },
+  events() { return CACHE.events; },
+  eventCategories() { return CACHE.eventCats; },
+  async addEvent(d) {
+    const id = await Remote.rpc("save_event", { p_title: d.title, p_description: d.description || null, p_starts_on: d.startsOn,
+      p_start_time: d.time || null, p_location: d.location || null, p_directions: d.directions || null, p_category: d.category,
+      p_deadline_kind: d.deadlineKind, p_deadline_date: d.deadlineKind === "date" ? d.deadlineDate : null, p_weekly: !!d.weekly });
+    await reload();
+    return id;
+  },
+  async deleteEvent(id) { await Remote.rpc("delete_event", { p_event: id }); await reload(); },
+  async voteEvent(id, occ, choice) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice }); await reload(); },
   myReports() {
     return Object.entries(CACHE.reports).map(([taskId, r]) => {
       const t = DB.tasks.find(x => x.id === taskId) || {};
@@ -1247,7 +1419,7 @@ function lastCheckFor(taskId) {
 /* ---------- Helfer ---------- */
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmtDate = iso => { if (!iso) return ""; const [y, m, d] = String(iso).split("-"); return `${d}.${m}.${y}`; };
-const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+function todayISO() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 const initials = p => ((p.firstName || "?")[0] + (p.lastName || "")[0]).toUpperCase();
 const scopeText = t => `${P(t.points)} pro ${INTERVALS[t.interval]}`;
 const seatsText = t => (t.min && t.min !== t.total ? `${t.min}–${t.total}` : `${t.total}`);
@@ -1272,6 +1444,8 @@ const I = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
   medal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l-2.5 6h-3z"/><circle cx="12" cy="15" r="6"/><path d="m12 12.3.9 1.8 2 .3-1.4 1.4.3 2-1.8-1-1.8 1 .3-2-1.4-1.4 2-.3z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 15.5l7-7"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.5"/></svg>',
   reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 4v4.6h4.6"/></svg>'
 };
@@ -1281,7 +1455,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all"
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1412,6 +1586,7 @@ function viewOnboarding() {
    ===================================================================== */
 const ALL_TABS = [
   { key: "tasks", label: "Aufgaben", icon: I.tasks },
+  { key: "events", label: "Termine", icon: I.calendar },
   { key: "points", label: "Punkte", icon: I.points },
   { key: "checks", label: "Checks", icon: I.stamp, role: "aufgabenchecker" },
   { key: "members", label: "Mitglieder", icon: I.members },
@@ -1424,28 +1599,34 @@ function viewApp() {
   if (!TABS.some(t => t.key === S.tab)) S.tab = "tasks";
   const tab = TABS.find(t => t.key === S.tab);
   const pending = can("aufgabenchecker") ? Api.pendingReports().filter(r => !r.own).length : 0;
+  const overdue = Api.events().filter(evOverdue).length;
+  const evNew = S.tab === "events" && S.evNew;
   const isNew = S.tab === "tasks" && S.editTask === "new" && can("aufgabenverwalter");
   const catsOpen = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
-  const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId));
-  const title = S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
+  const narrowDetail = !wide() && ((S.tab === "tasks" && (S.taskId || isNew || catsOpen)) || (S.tab === "members" && S.memberId)
+    || (S.tab === "events" && (S.evKey || evNew)));
+  const title = S.tab === "events" && !wide() && evNew ? "Neuer Termin" : S.tab === "events" && !wide() && S.evKey ? "Termin" : S.tab === "members" && S.memberEdit && !wide() ? "Profil bearbeiten" : catsOpen && !wide() ? "Kategorien" : isNew && !wide() ? "Neue Aufgabe" : S.tab === "tasks" && S.editTask && can("aufgabenverwalter") && !wide() ? "Aufgabe bearbeiten" : tab.label;
   const cats = S.tab === "tasks" && S.cats && can("aufgabenverwalter");
   const addBtn = S.tab === "tasks" && can("aufgabenverwalter") && !narrowDetail && !isNew && !cats
     ? `<button class="btn btn-secondary btn-sm" data-act="cats" aria-label="Kategorien bearbeiten">${I.tag}<span class="hide-narrow">Kategorien</span></button>
-       <button class="btn btn-primary btn-sm" data-act="new-task" aria-label="Neue Aufgabe">${I.plus}<span class="hide-narrow">Neue Aufgabe</span><span class="show-narrow">Neu</span></button>` : "";
+       <button class="btn btn-primary btn-sm" data-act="new-task" aria-label="Neue Aufgabe">${I.plus}<span class="hide-narrow">Neue Aufgabe</span><span class="show-narrow">Neu</span></button>`
+    : S.tab === "events" && !narrowDetail && !evNew
+      ? `<button class="btn btn-primary btn-sm" data-act="new-event" aria-label="Termin hinzufügen">${I.plus}<span class="hide-narrow">Termin hinzufügen</span><span class="show-narrow">Neu</span></button>` : "";
   let content = "";
   if (S.tab === "tasks") content = tasksView();
   else if (S.tab === "points") content = pointsView();
   else if (S.tab === "members") content = membersView();
   else if (S.tab === "checks") content = checksView();
+  else if (S.tab === "events") content = eventsView();
   else content = profileView();
   return `<div class="app" style="--tabs:${TABS.length}">
     <header class="topbar gutter">
       ${narrowDetail ? `<button class="icon-btn" data-act="back" aria-label="Zurück zur Liste">${I.back}</button>` : `<img src="${LOGO}" alt="">`}
       <h1>${title}</h1>${addBtn}
     </header>
-    <nav class="nav" aria-label="Bereiche">
+    <nav class="nav${TABS.length > 5 ? " many" : ""}" aria-label="Bereiche">
       <div class="nav-logo"><img src="${LOGO}" alt="Chora"></div>
-      ${TABS.map(t => `<button data-act="tab" data-tab="${t.key}" ${t.key === S.tab ? 'aria-current="page"' : ""}><span class="ico">${t.icon}${t.key === "checks" && pending ? `<span class="count-badge">${pending}</span>` : ""}</span>${t.label}</button>`).join("")}
+      ${TABS.map(t => `<button data-act="tab" data-tab="${t.key}" ${t.key === S.tab ? 'aria-current="page"' : ""}><span class="ico">${t.icon}${t.key === "checks" && pending ? `<span class="count-badge">${pending}</span>` : ""}${t.key === "events" && overdue ? `<span class="count-badge">${overdue}</span>` : ""}</span>${t.label}</button>`).join("")}
     </nav>
     <div class="main">${content}</div>
   </div>`;
@@ -1926,6 +2107,156 @@ function memberEditView(m) {
   </article>`;
 }
 
+/* ---------- Termine ---------- */
+function visibleEvents() {
+  const all = Api.events();
+  if (S.evRepeat === "all") return all;
+  const seen = new Set();
+  return all.filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true)));
+}
+function eventRow(o) {
+  const over = evOverdue(o), under = evUnderstaffed(o), del = !!o.deletedAt;
+  const cur = S.evKey === o.key && wide() ? 'aria-current="true"' : "";
+  const sub = [o.time ? `${o.time} Uhr` : "", esc(o.category), esc(o.location)].filter(Boolean).join(" · ");
+  let line = "";
+  if (del) line = `<span class="ev-line">Gelöscht am ${fmtDate(isoLocal(o.deletedAt))}</span>`;
+  else if (over) line = `<span class="ev-line warn">Rückmeldung fehlt · Frist war ${fmtShort(o.deadline)}</span>`;
+  else if (!o.myChoice && o.deadline) line = `<span class="ev-line">Rückmeldung bis ${fmtShort(o.deadline)}</span>`;
+  const underLine = under.length ? `<span class="ev-line warn">Unterbesetzt: ${under.map(([v, n]) => `${v} ${n}`).join(" · ")}</span>` : "";
+  const ch = CHOICES.find(c => c.key === o.myChoice);
+  return `<li><button class="row gutter${over ? " overdue" : ""}${del ? " deleted" : ""}" data-act="event" data-key="${esc(o.key)}" ${cur}>
+    <span class="ev-date"><small>${WD[wdOf(o.date)]}</small><b>${o.date.slice(8, 10)}.${o.date.slice(5, 7)}.</b></span>
+    <span class="row-main"><span class="row-title">${esc(o.title)}${del ? '<span class="mine-dot tag-del">GELÖSCHT</span>' : ""}</span>
+      ${sub ? `<span class="row-sub">${sub}</span>` : ""}${line}${underLine}</span>
+    <span class="row-meta">${ch && !del ? `<span class="choice ${ch.key}">${ch.short}</span>` : ""}${o.weekly && S.evRepeat !== "all" ? '<span class="ev-line">wöchentlich</span>' : ""}</span>
+    ${I.chev}</button></li>`;
+}
+function eventListHTML() {
+  const list = visibleEvents();
+  if (!list.length) return `<div class="empty">${I.calendar}<div>Keine anstehenden Termine.<br>Leg den ersten mit „Termin hinzufügen“ an.</div></div>`;
+  const groups = [];
+  list.forEach(o => {
+    const k = o.date.slice(0, 7), g = groups[groups.length - 1];
+    if (g && g.k === k) g.items.push(o); else groups.push({ k, items: [o] });
+  });
+  return groups.map(g => `<section><h3 class="group-h gutter">${MONTHS_LONG[Number(g.k.slice(5, 7)) - 1]} ${g.k.slice(0, 4)}</h3>
+    <ul class="rows">${g.items.map(eventRow).join("")}</ul></section>`).join("");
+}
+function eventsView() {
+  const list = visibleEvents();
+  if (S.evKey && !Api.events().some(o => o.key === S.evKey)) S.evKey = null;
+  if (wide() && !S.evKey && !S.evNew && list.length) S.evKey = list[0].key;
+  const o = Api.events().find(x => x.key === S.evKey);
+  const detail = S.evNew ? eventForm() : o ? eventDetail(o) : "";
+  if (!wide() && (S.evKey || S.evNew)) return `<div class="pane">${detail}</div>`;
+  return `<div class="split">
+    <div class="list-pane" id="list-pane">
+      <div class="toolbar gutter" id="tb">
+        <div class="chips" role="group" aria-label="Wiederholte Termine">
+          <button class="chip" data-act="ev-repeat" data-v="once" aria-pressed="${S.evRepeat !== "all"}">Wiederholte einmal</button>
+          <button class="chip" data-act="ev-repeat" data-v="all" aria-pressed="${S.evRepeat === "all"}">Alle Wiederholungen</button>
+        </div>
+      </div>
+      <div id="event-list">${eventListHTML()}</div>
+    </div>
+    <div class="detail-pane" id="detail-pane">${detail || `<div class="empty">${I.calendar}<div>Wähle links einen Termin.</div></div>`}</div>
+  </div>`;
+}
+function eventDetail(o) {
+  const del = !!o.deletedAt, passed = evDeadlinePassed(o), over = evOverdue(o), under = evUnderstaffed(o);
+  const when = `${fmtLong(o.date)}${o.time ? ` · ${o.time} Uhr` : ""}`;
+  const banner = del
+    ? `<div class="status no"><b>Gelöscht am ${fmtDate(isoLocal(o.deletedAt))}</b>Der Termin findet nicht statt. Abstimmen ist nicht mehr möglich.</div>`
+    : over ? `<div class="status no"><b>Deine Rückmeldung fehlt</b>Die Frist war am ${fmtDate(o.deadline)}. Bitte gib trotzdem noch Bescheid.</div>` : "";
+  const vote = del ? "" : `<section style="display:grid;gap:8px">
+      <h3 class="h3">Deine Rückmeldung${o.deadline && !passed ? ` <span style="font-weight:600;color:var(--muted)">bis ${fmtShort(o.deadline)}</span>` : ""}</h3>
+      <div class="vote-grid" role="group" aria-label="Teilnahme">${CHOICES.map(c => `<button data-act="vote" data-key="${esc(o.key)}" data-c="${c.key}" aria-pressed="${o.myChoice === c.key}" ${S.busy ? "disabled" : ""}>${c.label}</button>`).join("")}</div>
+      ${o.weekly ? `<p class="cta-note" style="text-align:left;margin:0">Gilt nur für den ${fmtDate(o.date)}.</p>` : ""}
+    </section>`;
+  const staff = passed && !del ? `<section style="display:grid;gap:8px">
+      <h3 class="h3">Zusagen je Stimme</h3>
+      <div class="staff">${VOICE_KEYS.map(v => `<div class="${(o.staffing[v] || 0) < 3 ? "low" : ""}"><span>${v}</span><b>${o.staffing[v] || 0}</b></div>`).join("")}</div>
+      <p class="cta-note" style="text-align:left;margin:0">${under.length ? "Orange: weniger als 3 Zusagen. " : ""}„Wenn nötig“ zählt als Zusage.</p>
+    </section>` : "";
+  const info = [
+    o.location ? `<div style="grid-column:1/-1"><dt>Ort</dt><dd>${esc(o.location)}</dd></div>` : "",
+    o.directions ? `<div style="grid-column:1/-1"><dt>Wegbeschreibung</dt><dd><p class="pre">${linkify(o.directions)}</p></dd></div>` : "",
+    o.deadline ? `<div><dt>Rückmeldung bis</dt><dd>${fmtDate(o.deadline)}</dd></div>` : "",
+    o.creator ? `<div><dt>Angelegt von</dt><dd>${esc(o.creator)}</dd></div>` : ""
+  ].join("");
+  const delBox = o.canDelete && !del ? (S.confirmEvDel === o.id
+    ? `<div class="confirm" role="alert">${o.weekly ? "Alle Wiederholungen dieses Termins löschen?" : "Diesen Termin löschen?"} Er bleibt noch eine Woche als gelöscht sichtbar.
+        <div><button class="btn btn-primary btn-sm" data-act="ev-del-yes" data-id="${esc(o.id)}">Löschen</button><button class="btn btn-secondary btn-sm" data-act="ev-del-no">Abbrechen</button></div></div>`
+    : `<button class="btn btn-danger" data-act="ev-del" data-id="${esc(o.id)}">${I.trash}${o.weekly ? "Termin mit allen Wiederholungen löschen" : "Termin löschen"}</button>`) : "";
+  return `<article class="detail gutter">
+    <div class="headline"><div class="eyebrow">${esc(o.category)}${o.weekly ? " · wöchentlich" : ""}</div><h2>${esc(o.title)}</h2>
+      <div class="ev-when">${when}</div>
+      ${o.description ? `<p class="task-desc pre">${linkify(o.description)}</p>` : ""}</div>
+    ${banner}${vote}${staff}
+    ${info ? `<dl class="props">${info}</dl>` : ""}
+    ${delBox}
+  </article>`;
+}
+function eventForm() {
+  const d = S.evDraft || { title: "", description: "", startsOn: "", time: "", location: "", directions: "", category: "", deadlineKind: "1w", deadlineDate: "", weekly: false };
+  const cats = Api.eventCategories();
+  return `<form class="detail gutter" id="f-event" novalidate>
+    <div class="headline"><div class="eyebrow">Neu</div><h2>Termin hinzufügen</h2></div>
+    ${errBox()}
+    <div class="field"><label for="ev-title">Titel</label>
+      <input class="input" id="ev-title" name="title" maxlength="120" value="${esc(d.title)}"${inv("title")}>${fieldErr("title")}</div>
+    <div class="two">
+      <div class="field"><label for="ev-category">Kategorie</label>
+        <select class="select" id="ev-category" name="category"${inv("category")}>
+          <option value="" ${d.category ? "" : "selected"} disabled>Kategorie wählen</option>
+          ${cats.map(c => `<option value="${esc(c)}" ${d.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}
+        </select>${fieldErr("category")}</div>
+      <div class="field"><label for="ev-date">Termin</label>
+        <input class="input" id="ev-date" name="startsOn" type="date" min="${todayISO()}" value="${esc(d.startsOn)}"${inv("startsOn")}>${fieldErr("startsOn")}</div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="ev-time">Uhrzeit</label>
+        <input class="input" id="ev-time" name="time" type="time" value="${esc(d.time)}"></div>
+      <div class="field"><label for="ev-location">Ort</label>
+        <input class="input" id="ev-location" name="location" maxlength="200" value="${esc(d.location)}"></div>
+    </div>
+    <div class="field"><label for="ev-directions">Wegbeschreibung</label>
+      <textarea class="textarea" id="ev-directions" name="directions" maxlength="1000" placeholder="z. B. Eingang über den Hof, Link zur Karte">${esc(d.directions)}</textarea></div>
+    <div class="field"><label for="ev-description">Beschreibung</label>
+      <textarea class="textarea" id="ev-description" name="description" maxlength="2000">${esc(d.description)}</textarea></div>
+    <div class="two">
+      <div class="field"><label for="ev-dlkind">Rückmeldung bis</label>
+        <select class="select" id="ev-dlkind" name="deadlineKind">${Object.entries(DEADLINES).map(([k, l]) => `<option value="${k}" ${d.deadlineKind === k ? "selected" : ""} ${k === "date" && d.weekly ? "disabled" : ""}>${l}</option>`).join("")}</select></div>
+      <div class="field" id="ev-dldate-f" ${d.deadlineKind === "date" && !d.weekly ? "" : "hidden"}><label for="ev-dldate">Datum der Frist</label>
+        <input class="input" id="ev-dldate" name="deadlineDate" type="date" value="${esc(d.deadlineDate)}"${inv("deadlineDate")}>${fieldErr("deadlineDate")}</div>
+    </div>
+    <label class="check-row"><input type="checkbox" id="ev-weekly" name="weekly" ${d.weekly ? "checked" : ""}>Wöchentlich wiederholen</label>
+    <p class="cta-note" id="ev-weekly-hint" style="text-align:left;margin:-8px 0 0" ${d.weekly ? "" : "hidden"}>Bei wöchentlichen Terminen gilt die Frist für jede Woche einzeln. Ein festes Datum ist deshalb nicht möglich.</p>
+    <div class="edit-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? '<span class="spinner"></span>' : I.plus}Termin anlegen</button>
+      <button class="btn btn-ghost" type="button" data-act="ev-cancel">Abbrechen</button>
+    </div>
+  </form>`;
+}
+function readEvent(f) {
+  const g = k => String(new FormData(f).get(k) || "").trim();
+  return { title: g("title"), category: g("category"), startsOn: g("startsOn"), time: g("time"), location: g("location"),
+    directions: g("directions"), description: g("description"), deadlineKind: g("deadlineKind") || "none",
+    deadlineDate: g("deadlineDate"), weekly: f.weekly.checked };
+}
+function validateEvent(d) {
+  const e = {};
+  if (!d.title) e.title = "Bitte gib einen Titel ein.";
+  if (!d.category) e.category = "Bitte wähle eine Kategorie.";
+  if (!d.startsOn) e.startsOn = "Bitte wähle ein Datum.";
+  else if (d.startsOn < todayISO()) e.startsOn = "Der Termin liegt in der Vergangenheit.";
+  if (d.deadlineKind === "date" && !d.weekly) {
+    if (!d.deadlineDate) e.deadlineDate = "Bitte wähle ein Datum für die Frist.";
+    else if (d.startsOn && d.deadlineDate > d.startsOn) e.deadlineDate = "Die Frist muss vor dem Termin liegen.";
+  }
+  return e;
+}
+
 /* ---------- Checks ---------- */
 function checksView() {
   const list = Api.pendingReports(), others = list.filter(r => !r.own).length, mine = me().profile.chorId;
@@ -2009,8 +2340,8 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null;
-  if (!wide()) { S.taskId = null; S.memberId = null; }
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null;
+  if (!wide()) { S.taskId = null; S.memberId = null; S.evKey = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
 }
@@ -2025,10 +2356,35 @@ document.addEventListener("click", async e => {
   if (a === "logout") { $("#toast-host").innerHTML = ""; await Api.logout(); S.taskId = S.memberId = S.editTask = null; return go({ screen: "login", authMode: "login", error: "", errors: {}, draft: null }); }
   if (a === "tab") return setTab(el.dataset.tab);
   if (a === "back") {
+    if (S.tab === "events") { if (S.evNew) { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; } else { S.evKey = null; S.confirmEvDel = null; } return render(); }
     if (S.cats) { S.cats = false; S.catEdit = null; S.errors = {}; return render(); }
     if (S.memberEdit) { S.memberEdit = null; S.confirmDeact = null; S.errors = {}; return render(); }
     if (S.editTask) { S.editTask = null; S.taskDraft = null; S.errors = {}; S.error = ""; return render(); }
     S.taskId = null; S.memberId = null; S.confirmDeact = null; return render();
+  }
+  if (a === "event") {
+    S.evKey = el.dataset.key; S.evNew = false; S.confirmEvDel = null; S.errors = {}; S.error = "";
+    if (wide()) { $("#detail-pane").innerHTML = eventDetail(Api.events().find(o => o.key === S.evKey)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
+    else { render(); $(".pane").scrollTop = 0; }
+    return;
+  }
+  if (a === "new-event") { S.evNew = true; S.evDraft = null; S.errors = {}; S.error = ""; if (!wide()) S.evKey = null; else markCurrent(null); render(); scrollDetailTop(); const i = $("#ev-title"); if (i) i.focus(); return; }
+  if (a === "ev-cancel") { S.evNew = false; S.evDraft = null; S.errors = {}; S.error = ""; render(); return; }
+  if (a === "ev-repeat") { S.evRepeat = el.dataset.v; render(); return; }
+  if (a === "vote") {
+    const o = Api.events().find(x => x.key === el.dataset.key); if (!o) return;
+    const c = el.dataset.c;
+    S.busy = true; render();
+    try { await Api.voteEvent(o.id, o.date, c); S.busy = false; render(); toast(`Rückmeldung gespeichert: ${CHOICES.find(x => x.key === c).short}`); }
+    catch (err) { S.busy = false; render(); toast(err.message); }
+    return;
+  }
+  if (a === "ev-del") { S.confirmEvDel = el.dataset.id; render(); return; }
+  if (a === "ev-del-no") { S.confirmEvDel = null; render(); return; }
+  if (a === "ev-del-yes") {
+    try { await Api.deleteEvent(el.dataset.id); S.confirmEvDel = null; render(); toast("Termin gelöscht."); }
+    catch (err) { S.confirmEvDel = null; render(); toast(err.message); }
+    return;
   }
   if (a === "edit-task") { S.editTask = el.dataset.id; S.taskDraft = null; S.errors = {}; S.error = ""; render(); scrollDetailTop(); return; }
   if (a === "cats") { S.cats = true; S.editTask = null; S.catEdit = null; S.errors = {}; S.error = ""; if (!wide()) S.taskId = null; render(); scrollDetailTop(); return; }
@@ -2098,6 +2454,15 @@ document.addEventListener("click", async e => {
 function scrollDetailTop() { const d = $("#detail-pane") || $(".pane"); if (d) d.scrollTop = 0; }
 document.addEventListener("change", async e => {
   const el = e.target;
+  if (el.id === "ev-weekly" || el.id === "ev-dlkind") {
+    const weekly = $("#ev-weekly").checked, kind = $("#ev-dlkind");
+    const optDate = kind.querySelector('option[value="date"]');
+    optDate.disabled = weekly;
+    if (weekly && kind.value === "date") kind.value = "1w";
+    $("#ev-dldate-f").hidden = weekly || kind.value !== "date";
+    $("#ev-weekly-hint").hidden = !weekly;
+    return;
+  }
   if (el.id === "cl-start") {
     const t = DB.tasks.find(x => x.id === el.form.dataset.id), s = Number(el.value);
     S.claimStart = s;
@@ -2164,6 +2529,17 @@ document.addEventListener("submit", async e => {
     if (v > todayISO()) return go({ errors: { since: "Das Datum darf nicht in der Zukunft liegen." } });
     try { await Api.setSince(id, v); go({ errors: {} }); toast("Datum gespeichert."); }
     catch (err) { toast(err.message); }
+    return;
+  }
+  if (f.id === "f-event") {
+    const d = readEvent(f), errors = validateEvent(d);
+    if (Object.keys(errors).length) return go({ errors, error: "", evDraft: d });
+    go({ busy: true, errors: {}, error: "", evDraft: d });
+    try {
+      const id = await Api.addEvent(d);
+      go({ busy: false, evNew: false, evDraft: null, evKey: `${id}|${d.startsOn}` });
+      toast("Termin angelegt.");
+    } catch (err) { go({ busy: false, error: err.message }); }
     return;
   }
   if (f.id === "f-claim") {
