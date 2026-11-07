@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.17.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.17.1";</script>
 </head>
 <body>
 <style>
@@ -959,6 +959,15 @@ function demoUsers() {
         { taskId: "t03", date: "2026-10-05", points: 4, checker: "S1-Anna", periodStart: mIdx("2026-09"), periodEnd: mIdx("2026-09"), interval: "M" }
       ]
     },
+    files: {
+      id: "u-demo5", email: "sarah@chora.app", verified: true, active: true, roles: ["dateiverwalter"], memberSince: "2021-09-14",
+      profile: { firstName: "Sarah", lastName: "Lorenz", voice: "S1", chorId: "S1-Sarah" },
+      claims: ["t06"],
+      claimInfo: { t06: { start: mIdx("2026-07"), end: mIdx("2027-03"), doneUntil: mIdx("2026-07") } },
+      checks: [
+        { taskId: "t06", date: "2026-10-08", points: 8, checker: "B-Thomas", periodStart: mIdx("2026-07"), periodEnd: mIdx("2026-07"), interval: "Q" }
+      ]
+    },
     member: {
       id: "u-demo2", email: "jan@chora.app", verified: true, active: true, roles: [], memberSince: "2024-01-08",
       reports: [{ taskId: "t08", date: "2026-11-02", status: "rejected", checker: "B-Thomas", decidedAt: "2026-11-04",
@@ -1775,7 +1784,7 @@ function viewLogin() {
       ${submitBtn(reg ? "Konto erstellen" : "Anmelden")}
     </form>
     ${reg ? `<p class="auth-text" style="font-size:14px">Danach schicken wir dir einen Code, mit dem du deine E-Mail-Adresse bestätigst.</p>` : ""}
-    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button>, <button class="link" type="button" data-act="demo" data-kind="checker">Aufgabenchecker</button>, <button class="link" type="button" data-act="demo" data-kind="events">Terminverwalter</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
+    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button>, <button class="link" type="button" data-act="demo" data-kind="checker">Aufgabenchecker</button>, <button class="link" type="button" data-act="demo" data-kind="events">Terminverwalter</button>, <button class="link" type="button" data-act="demo" data-kind="files">Dateiverwalter</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
 }
 
 function viewVerify() {
