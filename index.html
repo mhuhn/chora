@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.15.0";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.15.1";</script>
 </head>
 <body>
 <style>
@@ -823,7 +823,7 @@ function seed() {
   const T0 = todayISO();
   const nextTue = dAdd(T0, (2 - wdOf(T0) + 7) % 7);
   const events = [
-    { id: "e1", title: "Chorprobe", description: "Wir proben das Weihnachtsprogramm. Bitte die Noten mitbringen.", startsOn: dAdd(nextTue, -21), time: "19:30",
+    { id: "e1", title: "Chorprobe", description: "Wir proben das Weihnachtsprogramm. Bitte die Noten mitbringen.", startsOn: dAdd(nextTue, -21), time: "19:45",
       location: "Gemeindehaus St. Paul, großer Saal", directions: "Eingang über den Innenhof. Fahrräder bitte im Hof abstellen.",
       category: "Probe", deadlineKind: "1d", deadlineDate: null, weekly: true, createdBy: "m-B-Thomas", turnout: 0.85 },
     { id: "e2", title: "Sonderprobe Weihnachtskonzert", description: "Ganztägig mit Mittagspause. Für Getränke ist gesorgt.", startsOn: dAdd(T0, 5), time: "10:00",
@@ -851,7 +851,7 @@ function seed() {
     { key: e3key, by: "m-A1-Ruth", from: "ifneeded", to: "maybe", reason: "Kinderbetreuung ist noch nicht geklärt.", at: ago(5) }
   ];
   const eventExceptions = { [`e1|${dAdd(nextTue, 14)}`]: { deletedAt: ago(20), deletedBy: "m-B-Thomas" } };
-  return { v: 15, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
+  return { v: 16, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
     eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
@@ -885,6 +885,15 @@ function demoUsers() {
         { taskId: "t04", date: "2026-10-03", points: 6, checker: "T-Jonas", periodStart: mIdx("2026-08"), periodEnd: mIdx("2026-09"), interval: "M" }
       ]
     },
+    events: {
+      id: "u-demo4", email: "tim@chora.app", verified: true, active: true, roles: ["terminverwalter"], memberSince: "2019-03-01",
+      profile: { firstName: "Tim", lastName: "Hahn", voice: "B", chorId: "B-Tim" },
+      claims: ["t03"],
+      claimInfo: { t03: { start: mIdx("2026-09"), end: mIdx("2027-02"), doneUntil: mIdx("2026-09") } },
+      checks: [
+        { taskId: "t03", date: "2026-10-05", points: 4, checker: "S1-Anna", periodStart: mIdx("2026-09"), periodEnd: mIdx("2026-09"), interval: "M" }
+      ]
+    },
     member: {
       id: "u-demo2", email: "jan@chora.app", verified: true, active: true, roles: [], memberSince: "2024-01-08",
       reports: [{ taskId: "t08", date: "2026-11-02", status: "rejected", checker: "B-Thomas", decidedAt: "2026-11-04",
@@ -905,10 +914,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v15";
+const KEY = "chora.v16";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 15) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 16) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -1214,8 +1223,9 @@ const Api = {
       const t = DB.tasks.find(x => x.id === id);
       return t ? s + t.points * unitsInSeason(c, t.interval, season) : s;
     }, 0);
-    const carry = u.carry || 0, collected = carry + u.checks.reduce((s, c) => s + c.points, 0);
-    return { committed, collected, carry, missing: Math.max(0, committed - collected) };
+    const open = Api.myReports().filter(r => r.status === "reported").reduce((s, r) => s + (r.points || 0), 0);
+    const carry = u.carry || 0, collected = carry + open + u.checks.reduce((s, c) => s + c.points, 0);
+    return { committed, collected, carry, open, missing: Math.max(0, committed - collected) };
   },
   // GET {apiBase}/members – das Backend liefert Namen, Punkte, Rollen und
   // inaktive Mitglieder nur an Mitgliedsverwalter aus.
@@ -1526,7 +1536,7 @@ const RealApi = {
   members() { return CACHE.members; },
   pointsOf() {
     const p = CACHE.points || { collected: 0, committed: 0 };
-    return { committed: p.committed, collected: p.collected, carry: p.carry || 0, missing: Math.max(0, p.committed - p.collected) };
+    return { committed: p.committed, collected: p.collected, carry: p.carry || 0, open: p.open || 0, missing: Math.max(0, p.committed - p.collected) };
   }
 };
 if (!CONFIG.mock) Object.assign(Api, RealApi);
@@ -1575,7 +1585,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null, evEdit: null, lateVote: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "all", confirmEvDel: null, evEdit: null, lateVote: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -1624,7 +1634,7 @@ function viewLogin() {
       ${submitBtn(reg ? "Konto erstellen" : "Anmelden")}
     </form>
     ${reg ? `<p class="auth-text" style="font-size:14px">Danach schicken wir dir einen Code, mit dem du deine E-Mail-Adresse bestätigst.</p>` : ""}
-    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button>, <button class="link" type="button" data-act="demo" data-kind="checker">Aufgabenchecker</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
+    ${CONFIG.mock ? `<div class="demo-note">Prototyp: Daten bleiben in diesem Browser. Beispielkonto ansehen als <button class="link" type="button" data-act="demo" data-kind="member">Mitglied</button>, <button class="link" type="button" data-act="demo" data-kind="checker">Aufgabenchecker</button>, <button class="link" type="button" data-act="demo" data-kind="events">Terminverwalter</button> oder <button class="link" type="button" data-act="demo" data-kind="admin">Verwaltung (alle Rollen)</button></div>` : ""}`);
 }
 
 function viewVerify() {
@@ -2053,7 +2063,7 @@ function pointsView() {
     <section class="points-sum" aria-label="Übersicht">
       <div class="year"><b>${new Date().getFullYear()}</b><span>Zum Jahreswechsel bleiben nur gesammelte Punkte über ${P(SET.levelSilver)} (Silber) erhalten.</span></div>
       <div class="trio">
-        <div class="big-stat collected"><span>Gesammelt</span><b>${P(p.collected)}</b><small>${u.checks.length} ${u.checks.length === 1 ? "Check" : "Checks"}${p.carry ? ` + ${P(p.carry)} Übertrag` : ""}</small></div>
+        <div class="big-stat collected"><span>Gesammelt</span><b>${P(p.collected)}</b><small>${u.checks.length} ${u.checks.length === 1 ? "Check" : "Checks"}${p.open ? ` + ${P(p.open)} offen` : ""}${p.carry ? ` + ${P(p.carry)} Übertrag` : ""}</small></div>
         <div class="big-stat committed"><span>Zugesagt</span><b>${P(p.committed)}</b><small>${u.claims.length} ${u.claims.length === 1 ? "Aufgabe" : "Aufgaben"}</small></div>
         <div class="big-stat sum"><span>Summe</span><b>${P(sum)}</b><small>für dein Level</small></div>
       </div>
