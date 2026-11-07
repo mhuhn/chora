@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.2";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.10.3";</script>
 </head>
 <body>
 <style>
@@ -1028,7 +1028,8 @@ const Api = {
     const byCid = (a, b) => (!a.chorId) - (!b.chorId) || (a.chorId || "").localeCompare(b.chorId || "", "de");
     if (admin) return list.sort(byCid);
     return list.filter(m => m.active)
-      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice, level: m.level, claims: m.claims }))
+      .map(m => ({ id: m.id, me: m.me, chorId: m.chorId, voice: m.voice, level: m.level, claims: m.claims,
+        ...(can("aufgabenchecker") || can("aufgabenverwalter") ? { collected: m.collected, committed: m.committed } : {}) }))
       .sort(byCid);
   },
   // PUT {apiBase}/members/:id/active → Backend: WorkOS deactivate/reactivate organization membership
@@ -1845,6 +1846,7 @@ function memberDetail(m) {
     return `<article class="detail gutter">
       <div class="headline" style="gap:6px"><div class="eyebrow">${voiceLabel(m.voice)}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
         <div>${lvTag(m.level)}</div></div>
+      ${pointPanels(m)}
       ${memberClaimsSection(m)}
       ${m.me ? `<button class="btn btn-secondary" data-act="tab" data-tab="profile">${I.profile}Profil bearbeiten</button>` : ""}
     </article>`;
@@ -1854,6 +1856,15 @@ function memberDetail(m) {
 function memberHead(m, eyebrow) {
   return `<div class="headline" style="gap:4px"><div class="eyebrow">${eyebrow}</div><h2>${m.chorId ? esc(m.chorId) : "Ohne Chor-ID"}</h2>
     <div class="row-sub">${esc(m.firstName)} ${esc(m.lastName)}</div></div>`;
+}
+// Gesammelt, Zugesagt, Summe (für Mitglieds-, Aufgabenverwalter und Aufgabenchecker)
+function pointPanels(m) {
+  if (m.collected == null || m.committed == null) return "";
+  return `<div class="stats">
+      <div class="stat green"><span>Gesammelt</span><b>${P(m.collected)}</b></div>
+      <div class="stat"><span>Zugesagt</span><b>${P(m.committed)}</b></div>
+      <div class="stat orange"><span>Summe</span><b>${P(m.collected + m.committed)}</b></div>
+    </div>`;
 }
 // Für Aufgabenchecker: laufende und kommende Übernahmen des Mitglieds
 function memberClaimsSection(m) {
@@ -1873,11 +1884,7 @@ function memberReadView(m) {
   const roles = (m.roles || []).map(k => (ROLES.find(r => r.key === k) || { label: k }).label);
   return `<article class="detail gutter">
     ${memberHead(m, voiceLabel(m.voice) + (m.active ? "" : " · inaktiv"))}
-    <div class="stats">
-      <div class="stat green"><span>Gesammelt</span><b>${P(m.collected)}</b></div>
-      <div class="stat"><span>Zugesagt</span><b>${P(m.committed)}</b></div>
-      <div class="stat orange"><span>Summe</span><b>${P(m.collected + m.committed)}</b></div>
-    </div>
+    ${pointPanels(m)}
     <div><div class="meter" role="img" aria-label="${pct} Prozent gesammelt"><i style="width:${pct}%"></i></div>
       <div class="meter-cap"><span>${pct} % der zugesagten Punkte</span><span>${lvTag(m.level)}</span></div></div>
     <dl class="props">
