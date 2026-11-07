@@ -15,7 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;500;600;700&display=swap">
-<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.11.1";</script>
+<script>window.CHORA_PWA = true; window.CHORA_VERSION = "1.12.0";</script>
 </head>
 <body>
 <style>
@@ -487,6 +487,12 @@ fieldset.field legend { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .staff .low span { color: inherit; }
 .pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pre a { color: var(--orange-ink); }
+.late-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.late-list li { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.late-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.late-head b { font-weight: 700; }
+.late-reason { margin: 0; padding: 6px 10px; border-left: 3px solid var(--orange); background: var(--surface-2); border-radius: 0 8px 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.del-choice { display: flex; flex-wrap: wrap; gap: 8px; }
 .check-row { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
 .check-row input { width: 22px; height: 22px; accent-color: var(--orange); }
 /* ---------- Kategorien ---------- */
@@ -812,7 +818,17 @@ function seed() {
       category: "Probe", deadlineKind: "1d", deadlineDate: null, weekly: false, createdBy: "m-B-Thomas", turnout: 0.8,
       deletedAt: new Date(Date.now() - 2 * 86400000).toISOString(), deletedBy: "m-B-Thomas" }
   ];
-  return { v: 11, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes: {},
+  const e3key = `e3|${dAdd(T0, 4)}`, e2key = `e2|${dAdd(T0, 5)}`, ago = h => new Date(Date.now() - h * 3600000).toISOString();
+  const eventVotes = {
+    [e3key]: { "m-T-Paul": "no", "m-A1-Ruth": "maybe", "m-S1-Anna": "yes" },
+    [e2key]: { "u:demo@chora.app": "yes", "u:jan@chora.app": "yes", "u:mara@chora.app": "ifneeded" }
+  };
+  const eventLate = [
+    { key: e3key, by: "m-T-Paul", from: "yes", to: "no", reason: "Kurzfristig Dienstreise nach Hamburg, tut mir leid.", at: ago(26) },
+    { key: e3key, by: "m-A1-Ruth", from: "ifneeded", to: "maybe", reason: "Kinderbetreuung ist noch nicht geklärt.", at: ago(5) }
+  ];
+  const eventExceptions = { [`e1|${dAdd(nextTue, 14)}`]: { deletedAt: ago(20), deletedBy: "m-B-Thomas" } };
+  return { v: 12, tasks, members, reports, categories: [...CATEGORY_ORDER], events, eventVotes, eventLate, eventExceptions,
     eventCategories: ["Probe", "Sonderprobe", "Stimmprobe", "Konzert", "Auftritt", "Sonstiges"], users: {}, session: null, ui: {} };
 }
 function demoUsers() {
@@ -866,10 +882,10 @@ function demoUsers() {
 }
 
 /* ---------- Speicher (lokal, ausfallsicher) ---------- */
-const KEY = "chora.v11";
+const KEY = "chora.v12";
 let DB;
 function loadDB() {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 11) return d; } } catch (e) {}
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 12) return d; } } catch (e) {}
   return seed();
 }
 function saveDB() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) {} }
@@ -1064,12 +1080,25 @@ const Api = {
     if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Löschen kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
     e.deletedAt = new Date().toISOString(); e.deletedBy = myKey(); saveDB();
   },
-  async voteEvent(id, occ, choice) {
-    await wait(120);
+  async deleteEventOccurrence(id, occ) {
+    await wait();
     const e = DB.events.find(x => x.id === id);
-    if (!e || e.deletedAt) throw new ApiError("deleted", "Der Termin wurde gelöscht. Abstimmen ist nicht mehr möglich.");
+    if (!e || e.deletedAt) throw new ApiError("gone", "Diesen Termin gibt es nicht mehr.");
+    if (e.createdBy !== myKey() && !can("mitgliedsverwalter")) throw new ApiError("forbidden", "Löschen kann nur, wer den Termin angelegt hat, oder die Mitgliederverwaltung.");
+    DB.eventExceptions = DB.eventExceptions || {};
+    DB.eventExceptions[`${id}|${occ}`] = { deletedAt: new Date().toISOString(), deletedBy: myKey() }; saveDB();
+  },
+  async voteEvent(id, occ, choice, reason) {
+    await wait(120);
+    const e = DB.events.find(x => x.id === id), key = `${id}|${occ}`;
+    if (!e || e.deletedAt || (DB.eventExceptions || {})[key]) throw new ApiError("deleted", "Der Termin wurde gelöscht. Abstimmen ist nicht mehr möglich.");
     if (occ < todayISO()) throw new ApiError("past", "Der Termin ist schon vorbei.");
-    const key = `${id}|${occ}`;
+    const old = ((DB.eventVotes || {})[key] || {})[myKey()], dl = eventDeadline(e.deadlineKind, e.deadlineDate, occ);
+    if (dl && todayISO() > dl && ["yes", "ifneeded"].includes(old) && ["no", "maybe"].includes(choice)) {
+      if (!String(reason || "").trim()) throw new ApiError("reason", "Die Frist ist vorbei. Bitte gib einen Grund für die Änderung an.");
+      DB.eventLate = DB.eventLate || [];
+      DB.eventLate.push({ key, by: myKey(), from: old, to: choice, reason: String(reason).trim().slice(0, 500), at: new Date().toISOString() });
+    }
     DB.eventVotes[key] = { ...(DB.eventVotes[key] || {}), [myKey()]: choice }; saveDB();
   },
   myClaim(id) {
@@ -1191,6 +1220,15 @@ function synthChoice(m, e, key) {
   const p = e.low && e.low[m.voice] != null ? e.low[m.voice] : e.turnout, h = hash01(m.id + key);
   return h < p * 0.8 ? "yes" : h < p ? "ifneeded" : h < p + 0.12 ? "maybe" : h < p + 0.3 ? "no" : null;
 }
+// Letzte nachträgliche Änderung je Person, solange sie noch abgesagt / unentschieden ist
+function lateFor(key, votes) {
+  const latest = {};
+  (DB.eventLate || []).filter(l => l.key === key).forEach(l => { if (!latest[l.by] || l.at > latest[l.by].at) latest[l.by] = l; });
+  return Object.values(latest).filter(l => ["no", "maybe"].includes(votes[l.by])).sort((a, b) => b.at.localeCompare(a.at)).map(l => {
+    const m = String(l.by).startsWith("u:") ? (DB.users[l.by.slice(2)] || {}).profile || {} : DB.members.find(x => x.id === l.by) || {};
+    return { chorId: m.chorId || "", firstName: m.firstName || "", lastName: m.lastName || "", from: l.from, to: l.to, reason: l.reason, at: l.at };
+  });
+}
 function mockEvents() {
   const today = todayISO(), weekAgo = Date.now() - 7 * 86400000, out = [];
   (DB.events || []).forEach(e => {
@@ -1199,6 +1237,8 @@ function mockEvents() {
     const occs = e.weekly ? Array.from({ length: 8 }, (_, i) => dAdd(first, i * 7)) : [first];
     occs.filter(o => o >= today).forEach(occ => {
       const key = `${e.id}|${occ}`, votes = (DB.eventVotes || {})[key] || {};
+      const ex = (DB.eventExceptions || {})[key];
+      if (ex && Date.parse(ex.deletedAt) <= weekAgo) return;
       const staffing = Object.fromEntries(VOICE_KEYS.map(v => [v, 0]));
       DB.members.filter(m => m.active && m.voice !== "U").forEach(m => {
         const c = votes[m.id] !== undefined ? votes[m.id] : synthChoice(m, e, key);
@@ -1211,7 +1251,9 @@ function mockEvents() {
       });
       out.push({ key, id: e.id, title: e.title, description: e.description || "", startsOn: e.startsOn, date: occ, time: e.time || "",
         location: e.location || "", directions: e.directions || "", category: e.category, weekly: !!e.weekly, deadlineKind: e.deadlineKind,
-        deadline: eventDeadline(e.deadlineKind, e.deadlineDate, occ), deletedAt: e.deletedAt || null,
+        deadline: eventDeadline(e.deadlineKind, e.deadlineDate, occ), deletedAt: e.deletedAt || (ex && ex.deletedAt) || null,
+        deletedScope: e.deletedAt ? "series" : ex ? "single" : null,
+        lateChanges: can("mitgliedsverwalter") ? lateFor(key, votes) : null,
         creator: Api.periodChorId({ by: e.createdBy }), canDelete: e.createdBy === myKey() || can("mitgliedsverwalter"),
         myChoice: votes[myKey()] || null, staffing });
     });
@@ -1305,7 +1347,7 @@ async function reload() {
   CACHE.events = (events || []).map(e => ({ key: `${e.id}|${e.occurrence}`, id: e.id, title: e.title, description: e.description || "",
     startsOn: e.starts_on, date: e.occurrence, time: e.start_time ? e.start_time.slice(0, 5) : "", location: e.location || "",
     directions: e.directions || "", category: e.category, weekly: e.weekly, deadlineKind: e.deadline_kind, deadline: e.deadline,
-    deletedAt: e.deleted_at, creator: e.creator_chor_id || "", canDelete: e.can_delete, myChoice: e.my_choice, staffing: e.staffing || {} }));
+    deletedAt: e.deleted_at, deletedScope: e.deleted_scope, lateChanges: e.late_changes || null, creator: e.creator_chor_id || "", canDelete: e.can_delete, myChoice: e.my_choice, staffing: e.staffing || {} }));
   CACHE.categories = (cats || []).map(c => c.name).sort((a, b) => a.localeCompare(b, "de"));
   DB.tasks = (tasks || []).map(t => ({ id: t.id, title: t.title, description: t.description || "", category: t.category,
     interval: t.period, points: t.points, min: t.seats_min, total: t.seats_max,
@@ -1415,7 +1457,8 @@ const RealApi = {
     await reload();
   },
   async deleteEvent(id) { await Remote.rpc("delete_event", { p_event: id }); await reload(); },
-  async voteEvent(id, occ, choice) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice }); await reload(); },
+  async voteEvent(id, occ, choice, reason) { await Remote.rpc("vote_event", { p_event: id, p_occurrence: occ, p_choice: choice, p_reason: reason || null }); await reload(); },
+  async deleteEventOccurrence(id, occ) { await Remote.rpc("delete_event_occurrence", { p_event: id, p_occurrence: occ }); await reload(); },
   myReports() {
     return Object.entries(CACHE.reports).map(([taskId, r]) => {
       const t = DB.tasks.find(x => x.id === taskId) || {};
@@ -1474,7 +1517,7 @@ const S = {
   screen: "login", authMode: "login", email: "", error: "", errors: {}, busy: false,
   tab: (DB.ui && DB.ui.tab) || "tasks",
   taskId: null, memberId: null, group: "cat", q: "", mq: "", voiceFilter: "all",
-  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null, evEdit: null
+  confirmReset: false, editTask: null, taskDraft: null, confirmDeact: null, onlyMine: false, rejecting: null, cats: false, catEdit: null, claiming: null, claimStart: null, reporting: null, memberEdit: null, year: null, pf: "all", evKey: null, evNew: false, evDraft: null, evRepeat: "once", confirmEvDel: null, evEdit: null, lateVote: null
 };
 function decideScreen() {
   if (S.screen === "loading") return "loading";
@@ -2185,13 +2228,22 @@ function eventDetail(o) {
   const del = !!o.deletedAt, passed = evDeadlinePassed(o), over = evOverdue(o), under = evUnderstaffed(o);
   const when = `${fmtLong(o.date)}${o.time ? ` · ${o.time} Uhr` : ""}`;
   const banner = del
-    ? `<div class="status no"><b>Gelöscht am ${fmtDate(isoLocal(o.deletedAt))}</b>Der Termin findet nicht statt. Abstimmen ist nicht mehr möglich.</div>`
+    ? `<div class="status no"><b>Gelöscht am ${fmtDate(isoLocal(o.deletedAt))}</b>${o.deletedScope === "single"
+        ? `Der Termin am ${fmtDate(o.date)} findet nicht statt. Die anderen Termine der Reihe bleiben bestehen.` : "Der Termin findet nicht statt."} Abstimmen ist nicht mehr möglich.</div>`
     : over ? `<div class="status no"><b>Deine Rückmeldung fehlt</b>Die Frist war am ${fmtDate(o.deadline)}. Bitte gib trotzdem noch Bescheid.</div>` : "";
   const vote = del ? "" : `<section style="display:grid;gap:8px">
       <h3 class="h3">Deine Rückmeldung${o.deadline && !passed ? ` <span style="font-weight:600;color:var(--muted)">bis ${fmtShort(o.deadline)}</span>` : ""}</h3>
       <div class="vote-grid" role="group" aria-label="Teilnahme">${CHOICES.map(c => `<button data-act="vote" data-key="${esc(o.key)}" data-c="${c.key}" aria-pressed="${o.myChoice === c.key}" ${S.busy ? "disabled" : ""}>${c.label}</button>`).join("")}</div>
+      ${S.lateVote && S.lateVote.key === o.key ? lateForm(o) : ""}
       ${o.weekly ? `<p class="cta-note" style="text-align:left;margin:0">Gilt nur für den ${fmtDate(o.date)}.</p>` : ""}
     </section>`;
+  const late = can("mitgliedsverwalter") && passed && !del && o.lateChanges && o.lateChanges.length ? `<section style="display:grid;gap:8px">
+      <h3 class="h3">Nachträgliche Absagen <span class="num" style="color:var(--muted);font-weight:600">${o.lateChanges.length}</span></h3>
+      <ul class="late-list">${o.lateChanges.map(l => `<li>
+        <div class="late-head"><b>${l.chorId ? esc(l.chorId) : "ohne Chor-ID"}</b><span class="row-sub">${esc(l.firstName)} ${esc(l.lastName)}</span>
+          <span class="row-sub">${CHOICE_WORD[l.from] || l.from} → <b style="color:var(--orange-ink)">${CHOICE_WORD[l.to] || l.to}</b> · ${fmtDate(isoLocal(l.at))}</span></div>
+        <p class="late-reason">${esc(l.reason)}</p></li>`).join("")}</ul>
+    </section>` : "";
   const staff = passed && !del ? `<section style="display:grid;gap:8px">
       <h3 class="h3">Zusagen je Stimme</h3>
       <div class="staff">${VOICE_KEYS.map(v => `<div class="${(o.staffing[v] || 0) < 3 ? "low" : ""}"><span>${v}</span><b>${o.staffing[v] || 0}</b></div>`).join("")}</div>
@@ -2203,20 +2255,38 @@ function eventDetail(o) {
     o.deadline ? `<div><dt>Rückmeldung bis</dt><dd>${fmtDate(o.deadline)}</dd></div>` : "",
     o.creator ? `<div><dt>Angelegt von</dt><dd>${esc(o.creator)}</dd></div>` : ""
   ].join("");
-  const delBox = o.canDelete && !del ? (S.confirmEvDel === o.id
-    ? `<div class="confirm" role="alert">${o.weekly ? "Alle Wiederholungen dieses Termins löschen?" : "Diesen Termin löschen?"} Er bleibt noch eine Woche als gelöscht sichtbar.
-        <div><button class="btn btn-primary btn-sm" data-act="ev-del-yes" data-id="${esc(o.id)}">Löschen</button><button class="btn btn-secondary btn-sm" data-act="ev-del-no">Abbrechen</button></div></div>`
-    : `<button class="btn btn-danger" data-act="ev-del" data-id="${esc(o.id)}">${I.trash}${o.weekly ? "Termin mit allen Wiederholungen löschen" : "Termin löschen"}</button>`) : "";
+  const cd = S.confirmEvDel && S.confirmEvDel.key === o.key ? S.confirmEvDel : null;
+  const delBox = o.canDelete && !del ? (cd
+    ? `<div class="confirm" role="alert">${cd.scope === "series" ? "Alle Wiederholungen dieses Termins löschen?" : o.weekly ? `Nur den Termin am ${fmtDate(o.date)} löschen?` : "Diesen Termin löschen?"} Gelöschtes bleibt noch eine Woche sichtbar.
+        <div><button class="btn btn-primary btn-sm" data-act="ev-del-yes">Löschen</button><button class="btn btn-secondary btn-sm" data-act="ev-del-no">Abbrechen</button></div></div>`
+    : o.weekly
+      ? `<div class="del-choice"><button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="single">${I.trash}Nur diesen Termin löschen</button>
+          <button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="series">${I.trash}Ganze Reihe löschen</button></div>`
+      : `<button class="btn btn-danger" data-act="ev-del" data-key="${esc(o.key)}" data-scope="series">${I.trash}Termin löschen</button>`) : "";
   return `<article class="detail gutter">
     <div class="headline"><div class="detail-actions"><div class="eyebrow">${esc(o.category)}${o.weekly ? " · wöchentlich" : ""}</div>
       ${o.canDelete && !del ? `<button class="btn btn-secondary btn-sm" data-act="ev-edit" data-id="${esc(o.id)}">${I.edit}Bearbeiten</button>` : ""}</div>
       <h2>${esc(o.title)}</h2>
       <div class="ev-when">${when}</div>
       ${o.description ? `<p class="task-desc pre">${linkify(o.description)}</p>` : ""}</div>
-    ${banner}${vote}${staff}
+    ${banner}${vote}${staff}${late}
     ${info ? `<dl class="props">${info}</dl>` : ""}
     ${delBox}
   </article>`;
+}
+const CHOICE_WORD = { yes: "Zusage", ifneeded: "Wenn nötig", maybe: "Unentschieden", no: "Absage" };
+const needsReason = (o, choice) => evDeadlinePassed(o) && ["yes", "ifneeded"].includes(o.myChoice) && ["no", "maybe"].includes(choice);
+function lateForm(o) {
+  const c = S.lateVote.choice;
+  return `<form class="report-form" id="f-late" data-key="${esc(o.key)}" novalidate>
+    <div class="field"><label for="late-reason">Grund für ${c === "no" ? "deine Absage" : "„Unentschieden“"}</label>
+      <textarea class="textarea" id="late-reason" name="reason" maxlength="500" placeholder="Die Frist ist vorbei. Bitte schreib kurz, warum du ${c === "no" ? "absagst" : "doch unsicher bist"}."${inv("lateReason")}></textarea>${fieldErr("lateReason")}</div>
+    <p class="cta-note" style="text-align:left;margin:0">Den Grund sieht die Mitgliederverwaltung.</p>
+    <div class="edit-actions">
+      <button class="btn btn-primary" type="submit" ${S.busy ? "disabled" : ""}>${c === "no" ? "Absage senden" : "Änderung senden"}</button>
+      <button class="btn btn-ghost" type="button" data-act="late-cancel">Abbrechen</button>
+    </div>
+  </form>`;
 }
 function eventForm(o) {
   const d = S.evDraft || (o
@@ -2366,7 +2436,7 @@ function render() {
 function keepScroll() { const l = $("#list-pane"); return l ? { key: S.tab, top: l.scrollTop } : null; }
 function restoreScroll(k) { const l = $("#list-pane"); if (k && l && k.key === S.tab) l.scrollTop = k.top; }
 function setTab(tab) {
-  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null;
+  S.tab = tab; S.error = ""; S.errors = {}; S.profileDraft = null; S.confirmReset = false; S.editTask = null; S.taskDraft = null; S.confirmDeact = null; S.rejecting = null; S.cats = false; S.catEdit = null; S.claiming = null; S.reporting = null; S.memberEdit = null; S.evNew = false; S.evDraft = null; S.confirmEvDel = null; S.evEdit = null; S.lateVote = null;
   if (!wide()) { S.taskId = null; S.memberId = null; S.evKey = null; }
   DB.ui = { tab }; saveDB(); render();
   const pane = document.querySelector(".pane, .list-pane"); if (pane) pane.scrollTop = 0;
@@ -2389,7 +2459,7 @@ document.addEventListener("click", async e => {
     S.taskId = null; S.memberId = null; S.confirmDeact = null; return render();
   }
   if (a === "event") {
-    S.evKey = el.dataset.key; S.evNew = false; S.evEdit = null; S.evDraft = null; S.confirmEvDel = null; S.errors = {}; S.error = "";
+    S.evKey = el.dataset.key; S.evNew = false; S.evEdit = null; S.evDraft = null; S.confirmEvDel = null; S.lateVote = null; S.errors = {}; S.error = "";
     if (wide()) { $("#detail-pane").innerHTML = eventDetail(Api.events().find(o => o.key === S.evKey)); $("#detail-pane").scrollTop = 0; markCurrent(el); }
     else { render(); $(".pane").scrollTop = 0; }
     return;
@@ -2401,15 +2471,23 @@ document.addEventListener("click", async e => {
   if (a === "vote") {
     const o = Api.events().find(x => x.key === el.dataset.key); if (!o) return;
     const c = el.dataset.c;
-    S.busy = true; render();
+    if (c === o.myChoice) return;
+    if (needsReason(o, c)) { S.lateVote = { key: o.key, choice: c }; S.errors = {}; render(); const t = $("#late-reason"); if (t) t.focus(); return; }
+    S.lateVote = null; S.busy = true; render();
     try { await Api.voteEvent(o.id, o.date, c); S.busy = false; render(); toast(`Rückmeldung gespeichert: ${CHOICES.find(x => x.key === c).short}`); }
     catch (err) { S.busy = false; render(); toast(err.message); }
     return;
   }
-  if (a === "ev-del") { S.confirmEvDel = el.dataset.id; render(); return; }
+  if (a === "ev-del") { S.confirmEvDel = { key: el.dataset.key, scope: el.dataset.scope }; render(); return; }
+  if (a === "late-cancel") { S.lateVote = null; S.errors = {}; render(); return; }
   if (a === "ev-del-no") { S.confirmEvDel = null; render(); return; }
   if (a === "ev-del-yes") {
-    try { await Api.deleteEvent(el.dataset.id); S.confirmEvDel = null; render(); toast("Termin gelöscht."); }
+    const cd = S.confirmEvDel, o = cd && Api.events().find(x => x.key === cd.key);
+    if (!o) { S.confirmEvDel = null; render(); return; }
+    try {
+      if (cd.scope === "single" && o.weekly) await Api.deleteEventOccurrence(o.id, o.date); else await Api.deleteEvent(o.id);
+      S.confirmEvDel = null; render(); toast(cd.scope === "single" && o.weekly ? `Termin am ${fmtDate(o.date)} gelöscht.` : "Termin gelöscht.");
+    }
     catch (err) { S.confirmEvDel = null; render(); toast(err.message); }
     return;
   }
@@ -2558,6 +2636,16 @@ document.addEventListener("submit", async e => {
     if (v > todayISO()) return go({ errors: { since: "Das Datum darf nicht in der Zukunft liegen." } });
     try { await Api.setSince(id, v); go({ errors: {} }); toast("Datum gespeichert."); }
     catch (err) { toast(err.message); }
+    return;
+  }
+  if (f.id === "f-late") {
+    const o = Api.events().find(x => x.key === f.dataset.key), reason = f.reason.value.trim();
+    if (!o || !S.lateVote) return;
+    if (!reason) return go({ errors: { lateReason: "Bitte gib einen Grund an." } });
+    const c = S.lateVote.choice;
+    go({ busy: true, errors: {} });
+    try { await Api.voteEvent(o.id, o.date, c, reason); go({ busy: false, lateVote: null }); toast(`Rückmeldung gespeichert: ${CHOICES.find(x => x.key === c).short}`); }
+    catch (err) { go({ busy: false }); toast(err.message); }
     return;
   }
   if (f.id === "f-event") {
